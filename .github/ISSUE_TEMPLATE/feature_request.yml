@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a focused improvement to the deterministic scheduler.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user need is not met today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful outcome and non-AI fallback.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security and scheduling boundaries
+      description: Note public-data, RLS, timezone, conflict, integration, and privacy implications.
+    validations:
+      required: true
+  - type: checkboxes
+    id: core_authority
+    attributes:
+      label: Core authority check
+      options:
+        - label: This proposal keeps consequential scheduling authority and correctness in Project S Core rather than a UI, model, transport, or Cloud-only path.
+          required: true
