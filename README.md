@@ -1,24 +1,73 @@
 # Project S
 
-Project S Core is an Apache-2.0 public pre-alpha for self-hosted,
-authority-bounded scheduling. The browser, HTTP API, included TypeScript SDK,
-and local stdio MCP adapter share one four-operation booking contract. Clients
-can discover availability and prepare an exact request; a person records
-authority in the browser; PostgreSQL rechecks current policy and availability
-before committing at most one durable booking for an idempotency identity.
+[![Protected CI](https://github.com/EP2-Git/project-s/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/EP2-Git/project-s/actions/workflows/ci.yml)
+[![Latest prerelease](https://img.shields.io/github/v/release/EP2-Git/project-s?include_prereleases&sort=semver&label=prerelease)](https://github.com/EP2-Git/project-s/releases)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-6558d9.svg)](LICENSE)
+[![Node 22](https://img.shields.io/badge/Node.js-22-3c873a.svg)](.nvmrc)
+[![GitHub Discussions](https://img.shields.io/badge/Discussions-join-8250df.svg)](https://github.com/EP2-Git/project-s/discussions)
+
+**Open-source booking infrastructure for humans and agents.**
 
 **People define authority. Agents act within it. Project S commits.**
 
-> **Public pre-alpha:** Project S Core `0.1.0-prealpha` is open-source software
-> under the [Apache License 2.0](LICENSE), intended for local evaluation and
-> development. It is not production-ready. There is no hosted Project S service,
-> support guarantee, or compatibility guarantee today.
+Project S separates what a client can *ask to do* from what it is *authorized to
+commit*. An agent can discover availability and prepare an exact request, but
+preparation is not a reservation and is not permission. A person records
+authority in the browser. PostgreSQL then rechecks current time, policy,
+availability, confirmation, and authority under the host lock before creating at
+most one durable booking for the idempotency identity.
 
+> **Public pre-alpha:** Project S Core `0.1.0-prealpha` is for local evaluation
+> and development under the [Apache License 2.0](LICENSE). It is not
+> production-ready. There is no hosted Project S service, public signup, support
+> guarantee, or compatibility guarantee today.
+
+[See the authority proof](#authority-boundary-proof) ·
 [Run locally](#local-quick-start) ·
-[Run the real authority proof](#authority-boundary-demo) ·
+[Browse the docs](docs/README.md) ·
+[View the public roadmap](ROADMAP.md) ·
 [Read the architecture](docs/architecture.md) ·
-[Review the security model](docs/security-model.md) ·
-[Check the release evidence](docs/release-evidence-0.1.0-prealpha.md)
+[Join Discussions](https://github.com/EP2-Git/project-s/discussions) ·
+[Contribute](CONTRIBUTING.md)
+
+## Authority Boundary proof
+
+![Four-stage Project S authority boundary: an agent prepares a non-holding request; create is refused before approval; the browser records human authority without creating a booking; PostgreSQL commits one booking and exact replay returns it without duplication.](docs/assets/authority-boundary-overview.webp)
+
+The visual is composed from the assertion-backed synthetic MCP, browser, and
+PostgreSQL flow. The central result is the refusal: the client tries to create
+immediately and receives `CONFIRMATION_REQUIRED`; no booking exists. After the
+browser records authority, PostgreSQL performs the locked recheck. An exact
+replay returns the original booking rather than inserting a duplicate.
+
+[Run the real flow](#authority-boundary-demo) or read the
+[Authority Boundary Demo guide](docs/authority-boundary-demo.md) for the exact
+assertions, fixture boundary, and limits of the proof.
+
+## Works today
+
+- Human booking pages and authenticated host controls.
+- One strict contract across the browser, HTTP API, TypeScript SDK, and local
+  stdio MCP adapter.
+- Agent discovery and non-holding preparation.
+- Explicit per-booking browser authority.
+- Database-authoritative commit with fresh checks under the host lock.
+- Immutable exact replay that returns the committed result without duplication.
+- Separate authenticated host cancellation.
+
+## North star — future, not current capability
+
+Project S is moving toward independently authorized host-side and guest-side
+agents that can coordinate inside bounded, revocable mandates. Valid requests
+could commit automatically only while the mandate remains in scope; requests
+outside that authority would step up to a person. The deterministic Core remains
+self-hostable, with an optional managed Cloud service as a future operating
+model.
+
+Standing mandates, delegation, bilateral agent negotiation, federation, remote
+MCP, and a generally available Project S Cloud do **not** exist in this release.
+See the [product north star](docs/product/project-s-north-star.md),
+[feature-status matrix](docs/feature-status.md), and [public roadmap](ROADMAP.md).
 
 ## Preparation is not permission
 
@@ -56,6 +105,23 @@ application, HTTP API, TypeScript SDK, and local MCP adapter. See the full
 [feature-status matrix](docs/feature-status.md), the private
 [Cloud Preview 0.1 plan](docs/cloud-preview-0.1.md), and the separate
 [source-versus-service gates](docs/publication-readiness.md).
+
+## Engineering evidence
+
+| Scoped guarantee | Repository evidence |
+| --- | --- |
+| Shared strict contracts | Contract artifacts and the cross-transport parity suite reject schema and error-model drift. |
+| Database authority | pgTAP and locked-RPC tests exercise policy, RLS, authority, expiry, overlap, and replay boundaries. |
+| Duplicate prevention | A 50-round independent-client race harness expects one durable winner for one idempotency identity. |
+| Browser behavior | Playwright exercises Chromium, Firefox, and WebKit; browser-specific skips remain explicit. |
+| Accessibility | Playwright and Axe cover the joined public review and authenticated-host flow alongside keyboard and reflow checks. |
+| History safety | Publication-candidate workflows run Gitleaks, TruffleHog, repository policy, dependency, and licence checks. |
+| Reproducibility | Clean database resets, generated-type checks, clean-room CI, and publication-candidate verification are documented. |
+
+These are scoped engineering checks, not performance results, production
+guarantees, application-wide coverage claims, or third-party certification. See
+[testing](docs/testing.md) and the
+[current release evidence](docs/release-evidence-0.1.0-prealpha.md).
 
 ## Stack
 
