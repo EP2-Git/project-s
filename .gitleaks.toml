@@ -1,0 +1,11 @@
+title = "Project S publication candidate secret scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Public-only local configuration template"
+paths = [
+  '''\.env\.example$''',
+  '''supabase[\\/]\.temp([\\/]|$)''',
+]

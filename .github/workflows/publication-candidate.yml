@@ -1,0 +1,41 @@
+name: Publication candidate verification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-history:
+    name: Full-history publication safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: git fsck --full
+      - name: Gitleaks full-history scan
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro"
+          zricethezav/gitleaks@sha256:aa036a2f4bdfe3cc3c55fa4326308efabb4a6be498c883c864fd1d0d5585438a
+          detect --source=/repo --config=/repo/.gitleaks.toml --redact --no-banner
+      - name: TruffleHog verified-secret scan
+        run: >-
+          docker run --rm -v "$PWD:/repo:ro"
+          ghcr.io/trufflesecurity/trufflehog:3.96.0@sha256:b8acd9f7306d832b1f16e06003dac2283a737817954554111683ab7a56e9e539
+          git file:///repo --fail --fail-on-scan-errors --no-update --results=verified
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run security:scan
+      - run: npm run licenses:check
+      - run: npm run audit
+
+  clean-room:
+    name: Clean-room application verification
+    uses: ./.github/workflows/ci.yml
