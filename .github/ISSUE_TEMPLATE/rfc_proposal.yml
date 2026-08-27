@@ -1,0 +1,49 @@
+name: RFC / design proposal
+description: Propose a durable contract, authority, privacy, database, or compatibility decision.
+title: "[RFC]: "
+labels: ["type: rfc", "area: authority", "priority: p2", "needs decision"]
+body:
+  - type: markdown
+    attributes:
+      value: Read GOVERNANCE.md and docs/adr/README.md first. An RFC is discussion, not implementation approval.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and current constraint
+      description: What durable problem cannot be solved by a local implementation detail?
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: Proposed contract or decision
+      description: State who may do what, under which scope, expiry, revocation, and refusal conditions.
+    validations:
+      required: true
+  - type: textarea
+    id: impacts
+    attributes:
+      label: Authority, privacy, database/RLS, and compatibility impact
+      description: Cover every applicable boundary and explicitly say when one is unaffected.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include doing nothing and explain important tradeoffs.
+    validations:
+      required: true
+  - type: textarea
+    id: migration
+    attributes:
+      label: Migration and rollback
+      description: Explain mixed-version behavior, data migration, recovery, and safe reversal.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Explicit non-goals
+    validations:
+      required: true

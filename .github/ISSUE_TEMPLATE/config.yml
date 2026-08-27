@@ -1,5 +1,11 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Usage question
+    url: https://github.com/EP2-Git/project-s/discussions/categories/q-a
+    about: Ask how to run or evaluate the current public pre-alpha.
+  - name: Uncommitted idea
+    url: https://github.com/EP2-Git/project-s/discussions/categories/ideas
+    about: Explore an idea before maintainers accept it as actionable work.
   - name: Security report
     url: https://github.com/EP2-Git/project-s/security/advisories/new
     about: Report vulnerabilities privately; do not open a public issue.

@@ -1,7 +1,7 @@
 name: Feature request
-description: Propose a focused improvement to the deterministic scheduler.
+description: Propose a focused improvement after checking Discussions and the public roadmap.
 title: "[Feature]: "
-labels: [enhancement]
+labels: ["type: feature", "priority: p2"]
 body:
   - type: textarea
     id: problem
@@ -17,11 +17,38 @@ body:
       description: Describe the smallest useful outcome and non-AI fallback.
     validations:
       required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Most relevant area
+      description: Maintainers will apply the matching area label during triage.
+      options:
+        - Authority or confirmation
+        - Scheduling
+        - Database or RLS
+        - HTTP API
+        - TypeScript SDK
+        - MCP adapter
+        - Web application
+        - Accessibility
+        - Developer experience
+        - Security
+        - Documentation
+        - Release or community
+    validations:
+      required: true
   - type: textarea
     id: boundaries
     attributes:
       label: Security and scheduling boundaries
       description: Note public-data, RLS, timezone, conflict, integration, and privacy implications.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What should this proposal deliberately not change?
     validations:
       required: true
   - type: checkboxes

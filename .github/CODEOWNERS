@@ -1,0 +1,26 @@
+# CODEOWNERS identifies current review responsibility. Mandatory Code Owner
+# approval remains disabled while Project S has one trusted maintainer; see
+# GOVERNANCE.md.
+
+* @EP2-Git
+
+# Public contracts, application boundary, and MCP adapter
+/packages/contracts/ @EP2-Git
+/packages/application/ @EP2-Git
+/packages/mcp-server/ @EP2-Git
+/packages/sdk/ @EP2-Git
+/supabase/functions/api-v1/ @EP2-Git
+
+# Database authority and verification
+/supabase/migrations/ @EP2-Git
+/supabase/tests/ @EP2-Git
+/scripts/check-booking-concurrency.mjs @EP2-Git
+/scripts/check-agent-booking-flow.mjs @EP2-Git
+
+# Security, privacy, and durable authority decisions
+/SECURITY.md @EP2-Git
+/docs/security-model.md @EP2-Git
+/docs/agent-threat-model.md @EP2-Git
+/docs/agent-privacy-provenance.md @EP2-Git
+/docs/privacy.md @EP2-Git
+/docs/adr/ @EP2-Git

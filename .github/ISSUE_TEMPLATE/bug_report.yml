@@ -1,7 +1,7 @@
 name: Bug report
 description: Report a reproducible Project S defect without personal or production data.
 title: "[Bug]: "
-labels: [bug]
+labels: ["type: bug", "priority: p2"]
 body:
   - type: markdown
     attributes:
@@ -34,6 +34,26 @@ body:
         - Local development
         - Self-hosted preview
         - Unsupported internet deployment
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Most relevant area
+      description: Maintainers will apply the matching area label during triage.
+      options:
+        - Authority or confirmation
+        - Scheduling
+        - Database or RLS
+        - HTTP API
+        - TypeScript SDK
+        - MCP adapter
+        - Web application
+        - Accessibility
+        - Developer experience
+        - Security
+        - Documentation
+        - Release or community
     validations:
       required: true
   - type: checkboxes
