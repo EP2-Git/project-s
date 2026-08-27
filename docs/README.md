@@ -74,6 +74,9 @@ local data while evaluating it.
 
 ## Release and design context
 
+- [0.1.1 repository operations evidence](repository-evidence-0.1.1-prealpha.md)
+  records the public draft, taxonomy, milestones, Issues, Discussions, and
+  remaining manual gates.
 - [Publication readiness](publication-readiness.md) records source, self-hosted,
   and managed-service gates separately.
 - [Cloud Preview 0.1](cloud-preview-0.1.md) is a future private operating plan,
