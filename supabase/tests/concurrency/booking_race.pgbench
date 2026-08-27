@@ -1,0 +1,31 @@
+-- pgbench concurrency harness. Run after a local database reset.
+--
+-- npm run test:concurrency creates isolated future slots and invokes this file
+-- with two clients per slot for 50 independent rounds by default. For a
+-- shorter local diagnostic only, set PROJECT_S_CONCURRENCY_ROUNDS from 1 to 50.
+--
+-- Exactly one client per round must succeed. The other must receive PT409 with
+-- SLOT_UNAVAILABLE. Anything other than one confirmed row at the tested instant
+-- is a release blocker.
+
+select public.create_public_booking_v1(
+  jsonb_build_object(
+    'username', 'demo-host',
+    'meetingTypeId', '20000000-0000-4000-8000-000000000001',
+    'startAt', :slot_start,
+    'guestTimeZone', 'America/Halifax',
+    'idempotencyKey', extensions.gen_random_uuid(),
+    'booker', jsonb_build_object(
+      'name', 'Concurrency Fixture',
+      'email', 'race-' || extensions.gen_random_uuid()::text || '@example.invalid'
+    )
+  )
+);
+
+-- Post-run assertion, executed separately with the same slot_start:
+--
+-- select count(*) = 1 as exactly_one_booking
+-- from public.bookings
+-- where meeting_type_id = '20000000-0000-4000-8000-000000000001'
+--   and start_time = :'slot_start'::timestamptz
+--   and status = 'confirmed';

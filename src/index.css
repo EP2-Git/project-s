@@ -1,0 +1,233 @@
+
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+@import './styles/calendar.css';
+
+@layer base {
+  :root {
+    /* Midnight Indigo — light mode (rarely used; app forces dark) */
+    --background: 240 30% 98%;
+    --foreground: 240 43% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 43% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 43% 10%;
+
+    --primary: 244 75% 59%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 20% 95%;
+    --secondary-foreground: 240 43% 14%;
+
+    --muted: 240 20% 95%;
+    --muted-foreground: 240 10% 45%;
+
+    --accent: 244 75% 59%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 15% 88%;
+    --input: 240 15% 88%;
+    --ring: 244 75% 59%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 240 30% 98%;
+    --sidebar-foreground: 240 20% 30%;
+    --sidebar-primary: 244 75% 59%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 20% 95%;
+    --sidebar-accent-foreground: 240 43% 14%;
+    --sidebar-border: 240 15% 88%;
+    --sidebar-ring: 244 75% 59%;
+  }
+
+  .dark {
+    /* Midnight Indigo — primary surface */
+    --background: 240 43% 7%;
+    --foreground: 240 10% 96%;
+
+    --card: 240 43% 11%;
+    --card-foreground: 240 10% 96%;
+
+    --popover: 240 43% 9%;
+    --popover-foreground: 240 10% 96%;
+
+    --primary: 244 75% 62%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 38% 16%;
+    --secondary-foreground: 240 10% 96%;
+
+    --muted: 240 35% 14%;
+    --muted-foreground: 240 12% 68%;
+
+    --accent: 244 70% 22%;
+    --accent-foreground: 240 10% 96%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 30% 18%;
+    --input: 240 30% 18%;
+    --ring: 244 75% 62%;
+
+    --sidebar-background: 240 45% 6%;
+    --sidebar-foreground: 240 12% 72%;
+    --sidebar-primary: 244 75% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 38% 14%;
+    --sidebar-accent-foreground: 240 10% 96%;
+    --sidebar-border: 240 30% 14%;
+    --sidebar-ring: 244 75% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  /* Improved mobile text handling */
+  h1, h2, h3, h4, h5, h6, p, span, a, button {
+    @apply break-words;
+  }
+
+  /* Make input elements more touch-friendly on mobile */
+  input, select, textarea, button {
+    @apply min-h-[44px] sm:min-h-[inherit];
+  }
+
+  /* Larger touch targets on mobile */
+  button, a, [role="button"] {
+    @apply sm:py-2 py-2.5;
+  }
+
+  /* Ensure dialogs and modals fit on mobile screens */
+  [role="dialog"] {
+    @apply w-[calc(100%-2rem)] max-w-[90vw] sm:max-w-md md:max-w-lg mx-auto;
+  }
+
+  /* Global scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/30 dark:bg-primary/40 rounded-full;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  :root {
+    --scrollbar-thumb: rgba(155, 135, 245, 0.3);
+  }
+
+  .dark {
+    --scrollbar-thumb: rgba(155, 135, 245, 0.4);
+  }
+}
+
+/* Utility classes for mobile-first design */
+.glass-card {
+  @apply bg-black/20 backdrop-blur-lg border border-white/10 shadow-lg;
+}
+
+.hover-scale {
+  @apply transition-transform duration-200 hover:scale-105;
+}
+
+/* Staggered animations for content */
+.stagger-item {
+  opacity: 0;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.stagger-item:nth-child(1) { animation-delay: 0.1s; }
+.stagger-item:nth-child(2) { animation-delay: 0.2s; }
+.stagger-item:nth-child(3) { animation-delay: 0.3s; }
+.stagger-item:nth-child(4) { animation-delay: 0.4s; }
+.stagger-item:nth-child(5) { animation-delay: 0.5s; }
+
+/* Custom animations */
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile-specific utility classes */
+@media (max-width: 640px) {
+  .mobile-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .mobile-stack {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .mobile-center {
+    text-align: center !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .mobile-p-4 {
+    padding: 1rem !important;
+  }
+
+  .mobile-mt-4 {
+    margin-top: 1rem !important;
+  }
+}

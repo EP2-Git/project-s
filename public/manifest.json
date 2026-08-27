@@ -1,0 +1,12 @@
+{
+  "name": "Project S",
+  "short_name": "Project S",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1A1F2C",
+  "theme_color": "#9b87f5",
+  "description": "Self-hostable scheduling Core public pre-alpha"
+}
