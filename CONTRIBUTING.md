@@ -8,12 +8,20 @@ authorization boundary is the most important invariant.
 ## Before opening a change
 
 1. Search existing issues and discussions.
-2. For a substantial feature or schema change, open a design issue first.
-3. Never include real booking data, access tokens, production identifiers, screenshots containing personal information, or copied proprietary assets.
-4. Keep Google, notifications, and future AI features optional. The scheduler must work when they are absent.
-5. Keep authority and scheduling correctness in Project S Core. Cloud work may
+2. Ask usage questions and test uncommitted ideas in Discussions. Work from an
+   accepted Issue when the outcome is ready for implementation.
+3. For a public-contract, schema/RLS, authority, privacy, Core/Cloud, or
+   compatibility change, open an RFC/design proposal and follow the
+   [ADR process](docs/adr/README.md) before implementation.
+4. Never include real booking data, access tokens, production identifiers, screenshots containing personal information, or copied proprietary assets.
+5. Keep Google, notifications, and future AI features optional. The scheduler must work when they are absent.
+6. Keep authority and scheduling correctness in Project S Core. Cloud work may
    operate Core, but it may not bypass or relocate those guarantees into a
    proprietary cloud-only path.
+
+Read the [documentation index](docs/README.md), [governance](GOVERNANCE.md),
+[support routing](SUPPORT.md), and [public roadmap](ROADMAP.md) before proposing
+broad work.
 
 ## Development
 
@@ -37,6 +45,8 @@ npm run test:e2e
 
 ## Pull request requirements
 
+- Use a focused title beginning with `feat`, `fix`, `docs`, `test`, `refactor`,
+  `chore`, or `security`. Squash titles become permanent history.
 - Explain the problem and why the chosen design preserves security and scheduling correctness.
 - Include test evidence and any migration/rollback implications.
 - Update public documentation when configuration, behavior, privacy, or deployment changes.
