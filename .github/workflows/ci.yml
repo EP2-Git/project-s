@@ -51,6 +51,30 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  install-smoke:
+    name: Clean install smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    env:
+      VITE_SUPABASE_URL: http://127.0.0.1:54321
+      VITE_SUPABASE_PUBLISHABLE_KEY: project-s-ci-public-key
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Clean install
+        run: npm ci
+      - name: Cross-platform install smoke
+        run: npm run test:install-smoke
+
   database:
     name: Reproducible database and RLS
     runs-on: ubuntu-latest
