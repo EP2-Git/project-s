@@ -315,10 +315,10 @@ const socialHtml = `<!doctype html>
 
 const toWebp = async (page, png) => {
   const dataUrl = await page.evaluate(async (base64) => {
-    const image = new Image();
+    const image = new globalThis.Image();
     image.src = `data:image/png;base64,${base64}`;
     await image.decode();
-    const canvas = document.createElement('canvas');
+    const canvas = globalThis.document.createElement('canvas');
     canvas.width = image.naturalWidth;
     canvas.height = image.naturalHeight;
     canvas.getContext('2d').drawImage(image, 0, 0);
@@ -332,7 +332,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   const authorityPage = await browser.newPage({ viewport: { width: 1200, height: 1600 } });
   await authorityPage.setContent(authorityHtml, { waitUntil: 'load' });
-  await authorityPage.waitForFunction(() => window.__assetsReady === true);
+  await authorityPage.waitForFunction(() => globalThis.__assetsReady === true);
   const authorityPng = await authorityPage.screenshot({ type: 'png' });
   const authorityWebp = await toWebp(authorityPage, authorityPng);
   await writeFile(
