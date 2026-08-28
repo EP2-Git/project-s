@@ -68,6 +68,7 @@
     "test:concurrency": "node scripts/check-booking-concurrency.mjs",
     "types:check": "node scripts/check-generated-types.mjs",
     "security:scan": "node scripts/scan-repository.mjs",
+    "docs:check": "node scripts/check-repository-docs.mjs",
     "licenses:check": "node scripts/check-licenses.mjs",
     "audit": "npm audit --audit-level=high",
     "audit:prod": "npm audit --omit=dev --audit-level=high",

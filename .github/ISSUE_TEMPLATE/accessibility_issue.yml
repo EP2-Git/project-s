@@ -1,0 +1,51 @@
+name: Accessibility issue
+description: Report a barrier involving assistive technology, input, zoom, reflow, or perception.
+title: "[Accessibility]: "
+labels: ["type: bug", "area: accessibility", "priority: p1"]
+body:
+  - type: input
+    id: platform
+    attributes:
+      label: Browser and operating system
+    validations:
+      required: true
+  - type: input
+    id: assistive_technology
+    attributes:
+      label: Assistive technology or input method
+      description: Examples include screen reader, keyboard, voice control, switch input, zoom, or touch.
+    validations:
+      required: true
+  - type: input
+    id: route_state
+    attributes:
+      label: Route and state
+      description: Identify the page and whether it was prepared, blocked, approved, committed, replayed, or cancelled.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide minimal steps using synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected accessible result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result and impact
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, personal data, capability URLs, and production identifiers.
+          required: true

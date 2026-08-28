@@ -4,6 +4,20 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+
+- A repository-level Authority Boundary overview generated from the real
+  synthetic MCP/browser/PostgreSQL capture path.
+- Documentation navigation, public roadmap, governance, maintainer, support,
+  ADR, and structured evaluation-feedback surfaces.
+
+### Changed
+
+- Reordered the README around a sixty-second product explanation, current versus
+  future capability, local evaluation paths, and scoped engineering evidence.
+- Documented the public work-object contract for Discussions, Issues, Projects,
+  milestones, pull requests, releases, ADRs, the README, and this changelog.
+
 ## 0.1.0-prealpha - 2026-08-26
 
 Public source pre-alpha. This is not a production-ready or supported release.

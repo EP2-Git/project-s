@@ -1,0 +1,38 @@
+name: Documentation issue
+description: Report missing, misleading, stale, or difficult-to-follow documentation.
+title: "[Docs]: "
+labels: ["type: docs", "area: docs", "priority: p2"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Page and section
+      description: Link the file, heading, or public documentation location.
+    validations:
+      required: true
+  - type: textarea
+    id: intended_task
+    attributes:
+      label: Intended task
+      description: What were you trying to understand or complete?
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Missing or misleading content
+      description: Explain what blocked you or could lead a reader to the wrong conclusion.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Proposed correction
+      description: Suggest concise replacement wording, navigation, or evidence if you can.
+  - type: checkboxes
+    id: claims
+    attributes:
+      label: Claims check
+      options:
+        - label: I did not turn a roadmap item, local test, or private Cloud plan into a current production claim.
+          required: true

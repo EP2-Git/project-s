@@ -1,0 +1,76 @@
+name: Evaluation feedback
+description: Report friction or understanding gaps from a synthetic local Project S evaluation.
+title: "[Evaluation]: "
+labels: ["type: feedback", "area: dx", "area: community", "priority: p2"]
+body:
+  - type: markdown
+    attributes:
+      value: Use only the synthetic local fixture. Do not include credentials, capability URLs, real bookings, personal data, or production identifiers.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0-prealpha or a commit SHA
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and versions
+      description: Include OS, Node, npm, Docker, and browser versions where relevant.
+    validations:
+      required: true
+  - type: input
+    id: setup_time
+    attributes:
+      label: Approximate setup time
+      description: How long did clone-to-first-run take?
+    validations:
+      required: true
+  - type: dropdown
+    id: completed_flow
+    attributes:
+      label: Furthest completed step
+      options:
+        - Clone and install
+        - Local database start and reset
+        - Availability discovery
+        - Booking preparation
+        - Pre-approval create refusal
+        - Browser authority recorded
+        - Database commit and exact replay
+        - Authenticated host cancellation
+    validations:
+      required: true
+  - type: textarea
+    id: friction
+    attributes:
+      label: Where did you get stuck or slow down?
+      description: Include the command, expected result, actual result, and any undocumented step.
+    validations:
+      required: true
+  - type: dropdown
+    id: authority_clarity
+    attributes:
+      label: Did the difference between agent ability and booking authority make sense?
+      options:
+        - Yes, immediately
+        - Yes, after reading the demo explanation
+        - Partly
+        - No
+    validations:
+      required: true
+  - type: textarea
+    id: improvement
+    attributes:
+      label: Smallest useful improvement
+      description: What single change would most improve the next evaluation?
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Synthetic-data confirmation
+      options:
+        - label: I used only Project S's disposable synthetic local fixture and removed secrets, personal data, and production identifiers.
+          required: true
