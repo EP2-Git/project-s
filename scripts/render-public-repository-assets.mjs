@@ -39,36 +39,36 @@ const authorityHtml = `<!doctype html>
   <meta charset="utf-8">
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; width: 1200px; height: 1600px; overflow: hidden; }
+    html, body { margin: 0; width: 780px; overflow: hidden; }
     body {
       background:
         radial-gradient(circle at 82% 9%, rgba(121, 100, 255, .18), transparent 30%),
         #070817;
       color: #f7f7ff;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      padding: 58px 62px 46px;
+      padding: 46px 42px 38px;
     }
-    header { margin-bottom: 30px; }
+    header { margin-bottom: 26px; }
     .eyebrow {
       color: #a9a2ff;
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: .12em;
       text-transform: uppercase;
     }
     h1 {
-      font-size: 58px;
+      font-size: 54px;
       line-height: 1.03;
       letter-spacing: -.04em;
       margin: 12px 0 14px;
-      max-width: 1000px;
+      max-width: 690px;
     }
     .intro {
       color: #c6c6da;
-      font-size: 25px;
+      font-size: 27px;
       line-height: 1.4;
       margin: 0;
-      max-width: 1000px;
+      max-width: 690px;
     }
     .sequence { display: grid; gap: 18px; }
     .panel {
@@ -76,12 +76,9 @@ const authorityHtml = `<!doctype html>
       background: rgba(16, 17, 43, .94);
       border: 1px solid #292a58;
       border-radius: 24px;
-      display: grid;
-      gap: 30px;
-      grid-template-columns: 390px 1fr;
-      min-height: 275px;
+      display: block;
       overflow: hidden;
-      padding: 26px 30px;
+      padding: 28px 30px 30px;
       position: relative;
     }
     .panel.refused {
@@ -91,7 +88,7 @@ const authorityHtml = `<!doctype html>
     }
     .step {
       color: #a9a2ff;
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 900;
       letter-spacing: .12em;
       margin-bottom: 10px;
@@ -99,21 +96,21 @@ const authorityHtml = `<!doctype html>
     }
     .refused .step { color: #ff9caf; }
     h2 {
-      font-size: 38px;
+      font-size: 42px;
       letter-spacing: -.025em;
       line-height: 1.07;
       margin: 0 0 15px;
     }
     .panel p {
       color: #c8c8db;
-      font-size: 21px;
+      font-size: 27px;
       line-height: 1.42;
       margin: 0;
     }
     .result {
       color: #86f0d0;
       display: block;
-      font-size: 18px;
+      font-size: 23px;
       font-weight: 800;
       letter-spacing: .02em;
       margin-top: 14px;
@@ -125,19 +122,20 @@ const authorityHtml = `<!doctype html>
       border: 1px solid #323466;
       border-radius: 18px;
       display: flex;
-      height: 225px;
+      height: 240px;
       justify-content: center;
       overflow: hidden;
+      margin-top: 22px;
       padding: 8px;
     }
     canvas { display: block; height: 100%; width: 100%; }
     footer {
       align-items: center;
       color: #9a9aaf;
-      display: flex;
-      font-size: 17px;
-      justify-content: space-between;
-      margin-top: 27px;
+      display: grid;
+      font-size: 19px;
+      gap: 8px;
+      margin-top: 24px;
     }
     .brand { color: #f7f7ff; font-weight: 800; }
   </style>
@@ -216,7 +214,7 @@ const authorityHtml = `<!doctype html>
     Promise.all([
       drawCrop('prepared', inputs.review, 16, 108, 358, 178),
       drawCrop('blocked', inputs.review, 33, 310, 324, 184),
-      drawCrop('authority', inputs.authority, 16, 350, 358, 430),
+      drawCrop('authority', inputs.authority, 16, 350, 358, 260),
       drawCrop('committed', inputs.committed, 300, 250, 1100, 255),
     ]).then(() => { window.__assetsReady = true; });
   </script>
@@ -330,10 +328,10 @@ const toWebp = async (page, png) => {
 await mkdir(outputRoot, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
-  const authorityPage = await browser.newPage({ viewport: { width: 1200, height: 1600 } });
+  const authorityPage = await browser.newPage({ viewport: { width: 780, height: 720 } });
   await authorityPage.setContent(authorityHtml, { waitUntil: 'load' });
   await authorityPage.waitForFunction(() => globalThis.__assetsReady === true);
-  const authorityPng = await authorityPage.screenshot({ type: 'png' });
+  const authorityPng = await authorityPage.screenshot({ type: 'png', fullPage: true });
   const authorityWebp = await toWebp(authorityPage, authorityPng);
   await writeFile(
     resolve(outputRoot, 'authority-boundary-overview.webp'),

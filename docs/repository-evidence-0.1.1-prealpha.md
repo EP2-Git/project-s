@@ -110,7 +110,7 @@ GitHub UI work and remain explicit review-gated follow-up.
 ## Validation evidence
 
 - Real synthetic Authority Boundary capture: 1 joined Chromium scenario passed.
-- `npm run docs:check`: 49 Markdown files and 6 issue forms passed.
+- `npm run docs:check`: 50 Markdown files and 6 issue forms passed.
 - All 7 issue-template YAML files parsed successfully.
 - `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build` passed.
 - Test totals: 70 root, 13 contracts, 7 application, 8 SDK, 14 MCP, and 16
@@ -119,8 +119,10 @@ GitHub UI work and remain explicit review-gated follow-up.
 - `npm run security:scan`: no forbidden path or identifier.
 - `npm run licenses:check`: 520 installed package entries reviewed.
 - `git diff --check`: passed.
-- The Authority Boundary overview was inspected at full resolution and at a
-  390-pixel mobile render. Its alt text describes all four states.
+- The Authority Boundary overview was inspected at its 780×2727 full resolution
+  and at a 390×1364 mobile render. Its state labels, explanatory captions, and
+  footer remain readable without clipping, and its alt text describes all four
+  states.
 
 ## Review gates not crossed
 
