@@ -3,11 +3,13 @@
 The roadmap groups work by verifiable outcomes, not arbitrary dates. It does not
 promise release timing or turn future direction into current capability.
 
-## Now — 0.1.1-prealpha: Evaluation-ready repository
+## Now — 0.1.1-prealpha: Public development foundation
 
-**Goal:** a technically competent stranger can understand Project S, clone it,
-run the real synthetic authority flow, find contribution and support paths, and
-report useful feedback without private explanation from the maintainer.
+**Goal:** Project S development is understandable and actionable in public. A
+technically competent stranger can inspect the current proof, clone and run the
+real synthetic authority flow, follow accepted work and durable decisions,
+contribute through explicit paths, and report reproducible feedback without
+private explanation from the maintainer.
 
 Current outcome areas:
 
