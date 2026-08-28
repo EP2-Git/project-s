@@ -5,7 +5,7 @@
 - **Base:** `5144937b8b2070fb1b683ccfb0dd5face0b915a8`
 - **Branch:** `codex/public-repo-ux-build-in-public`
 - **Draft pull request:** [#24](https://github.com/EP2-Git/project-s/pull/24)
-- **Milestone:** [0.1.1-prealpha — Evaluation-ready repository](https://github.com/EP2-Git/project-s/milestone/2)
+- **Milestone:** [0.1.1-prealpha — Public development foundation](https://github.com/EP2-Git/project-s/milestone/2)
 
 This record makes the public repository operating model reproducible. Mutable
 execution status remains in GitHub; this document records the objects created,
@@ -64,7 +64,7 @@ No milestone has an invented due date.
 
 | Milestone | Goal | Initial Issues |
 | --- | --- | ---: |
-| [0.1.1-prealpha — Evaluation-ready repository](https://github.com/EP2-Git/project-s/milestone/2) | A stranger can understand, clone, run, evaluate, and report feedback without private coaching. | 14 |
+| [0.1.1-prealpha — Public development foundation](https://github.com/EP2-Git/project-s/milestone/2) | Project S development is understandable and actionable in public: outsiders can inspect the proof, run the system, follow accepted work and durable decisions, contribute through explicit paths, and report reproducible feedback without private explanation. | 14 |
 | [0.2.0-prealpha — Delegated authority foundation](https://github.com/EP2-Git/project-s/milestone/3) | Define and prove bounded, revocable authority beyond one per-booking browser approval. | 2 |
 | [0.3.0-prealpha — Bilateral agent proof](https://github.com/EP2-Git/project-s/milestone/4) | Independently authorized guest-side and host-side agents coordinate one valid booking with human step-up outside mandate. | 1 |
 
