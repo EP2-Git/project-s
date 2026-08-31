@@ -42,6 +42,7 @@
     "test:sdk": "npm run test --workspace @project-s/sdk",
     "test:mcp": "node --test packages/mcp-server/tests/*.test.mjs",
     "test:parity": "npm run build:packages && node --test tests/parity/*.test.mjs",
+    "test:install-smoke": "node scripts/install-smoke.mjs",
     "test:agent-flow": "npm run build:packages && node scripts/check-agent-booking-flow.mjs",
     "test:watch": "vitest",
     "test:coverage": "npm run build:packages && vitest run --coverage",
