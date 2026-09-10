@@ -8,11 +8,9 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { createRequire } from "node:module";
 import os from "node:os";
 import process from "node:process";
 
-const require = createRequire(import.meta.url);
 const started = Date.now();
 
 function section(title) {
@@ -132,12 +130,12 @@ for (const path of requiredPaths) {
 
 run("build packages", npm, ["run", "build:packages"]);
 
-// After building packages, verify that exported workspace package entry resolves cleanly
+// After building packages, verify the workspace entry through its import export.
 try {
-  require.resolve("@project-s/contracts");
-  console.log("ok workspace resolve @project-s/contracts");
+  await import("@project-s/contracts");
+  console.log("ok workspace import @project-s/contracts");
 } catch (error) {
-  fail(`workspace package @project-s/contracts is not resolvable: ${error.message}`);
+  fail(`workspace package @project-s/contracts could not be imported: ${error.message}`);
 }
 
 run("typecheck", npm, ["run", "typecheck"]);
