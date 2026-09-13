@@ -6,6 +6,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Cross-platform clean-install smoke (`npm run test:install-smoke`) and a CI
+  matrix on Ubuntu, macOS, and Windows, plus an install-verification checklist
+  for full Docker-backed local runs.
 - A repository-level Authority Boundary overview generated from the real
   synthetic MCP/browser/PostgreSQL capture path.
 - Documentation navigation, public roadmap, governance, maintainer, support,
