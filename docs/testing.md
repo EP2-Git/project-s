@@ -92,6 +92,8 @@ the actual Edge router and the documented DST, stale-state, idempotency, and
 
 - `quality`: install, lint, typecheck, contract/application/SDK/MCP and unit
   coverage, build, audit, current-tree scan, licenses;
+- `install-smoke`: `npm ci` plus Docker-free build/typecheck smoke on Ubuntu,
+  macOS, and Windows (see [install-verification.md](install-verification.md));
 - `database`: fresh local stack, two readiness-checked resets, lint, directory-scoped pgTAP, 50 isolated collision pairs, and generated-type drift;
 - `e2e`: seeded local stack, live stdio-MCP parity flow, and all browser projects;
 - publication workflow: full-history secret scan and clean-room checks.
