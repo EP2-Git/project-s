@@ -13,27 +13,38 @@ const captureRoot = resolve(
 );
 const outputRoot = resolve(repositoryRoot, 'docs', 'assets');
 
+const renderMode = process.argv[2] ?? '--all';
+if (!['--all', '--authority-only', '--social-only'].includes(renderMode)) {
+  throw new Error(
+    'Usage: node scripts/render-public-repository-assets.mjs [--all|--authority-only|--social-only]',
+  );
+}
+const renderAuthority = renderMode !== '--social-only';
+const renderSocial = renderMode !== '--authority-only';
+
 const sourceFiles = {
   review: resolve(captureRoot, '02-review-mobile.png'),
   authority: resolve(captureRoot, '03-human-authority-recorded-mobile.png'),
   committed: resolve(captureRoot, '04-committed-booking.png'),
 };
 
-const sourceEntries = await Promise.all(
-  Object.entries(sourceFiles).map(async ([name, path]) => {
-    const bytes = await readFile(path);
-    return [
-      name,
-      {
-        dataUrl: `data:image/png;base64,${bytes.toString('base64')}`,
-        sha256: createHash('sha256').update(bytes).digest('hex'),
-      },
-    ];
-  }),
-);
+const sourceEntries = renderAuthority
+  ? await Promise.all(
+      Object.entries(sourceFiles).map(async ([name, path]) => {
+        const bytes = await readFile(path);
+        return [
+          name,
+          {
+            dataUrl: `data:image/png;base64,${bytes.toString('base64')}`,
+            sha256: createHash('sha256').update(bytes).digest('hex'),
+          },
+        ];
+      }),
+    )
+  : [];
 const sources = Object.fromEntries(sourceEntries);
 
-const authorityHtml = `<!doctype html>
+const authorityHtml = renderAuthority ? `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -219,7 +230,7 @@ const authorityHtml = `<!doctype html>
     ]).then(() => { window.__assetsReady = true; });
   </script>
 </body>
-</html>`;
+</html>` : '';
 
 const socialHtml = `<!doctype html>
 <html lang="en">
@@ -229,84 +240,260 @@ const socialHtml = `<!doctype html>
     * { box-sizing: border-box; }
     html, body { height: 640px; margin: 0; overflow: hidden; width: 1280px; }
     body {
-      background:
-        radial-gradient(circle at 80% 20%, rgba(121, 100, 255, .28), transparent 34%),
-        linear-gradient(145deg, #070817, #0c0d25);
-      color: #f8f8ff;
+      background: #f4f3ef;
+      border-top: 12px solid #171716;
+      color: #171716;
       display: grid;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      grid-template-columns: 1.45fr 1fr;
-      padding: 64px 70px;
+      gap: 54px;
+      grid-template-columns: 1.08fr .92fr;
+      padding: 52px 68px 58px;
+      position: relative;
     }
-    .brand { align-items: center; display: flex; gap: 18px; }
-    .mark {
-      align-items: center;
-      background: linear-gradient(145deg, #9b8bff, #6f58ed);
-      border-radius: 14px;
-      display: flex;
-      font-size: 42px;
-      font-weight: 900;
-      height: 66px;
-      justify-content: center;
-      width: 66px;
+    body::after {
+      background: #ded9ff;
+      border: 2px solid #171716;
+      border-radius: 36px;
+      content: "";
+      height: 462px;
+      position: absolute;
+      right: 48px;
+      top: 104px;
+      transform: rotate(2.5deg);
+      width: 456px;
+      z-index: 0;
     }
-    .name { font-size: 34px; font-weight: 850; letter-spacing: -.03em; }
-    h1 {
-      font-size: 58px;
-      letter-spacing: -.045em;
-      line-height: 1.02;
-      margin: 60px 0 24px;
-      max-width: 700px;
-    }
-    .sub {
-      color: #bdbdd1;
-      font-size: 24px;
-      line-height: 1.45;
-      margin: 0;
-      max-width: 660px;
-    }
-    .meta {
-      color: #a9a2ff;
-      font-size: 18px;
+    .copy, .product { position: relative; z-index: 1; }
+    .brand { align-items: center; display: flex; gap: 16px; }
+    .mark { display: block; height: 62px; width: 62px; }
+    .name { font-size: 32px; font-weight: 800; letter-spacing: -.035em; }
+    .eyebrow {
+      color: #6857d9;
+      font-size: 17px;
       font-weight: 800;
-      letter-spacing: .08em;
-      margin-top: 42px;
+      letter-spacing: .12em;
+      margin-top: 54px;
       text-transform: uppercase;
     }
-    .flow {
+    h1 {
+      font-size: 65px;
+      letter-spacing: -.055em;
+      line-height: .98;
+      margin: 16px 0 22px;
+      max-width: 620px;
+    }
+    .sub {
+      color: #4c4b47;
+      font-size: 22px;
+      line-height: 1.42;
+      margin: 0;
+      max-width: 580px;
+    }
+    .meta {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      margin-top: 34px;
+    }
+    .meta span {
+      border: 1px solid rgba(23, 23, 22, .24);
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: .055em;
+      padding: 9px 13px;
+      text-transform: uppercase;
+    }
+    .meta span:first-child {
+      background: #171716;
+      border-color: #171716;
+      color: #fff;
+    }
+    .product {
       align-self: center;
+      justify-self: end;
+      width: 450px;
+    }
+    .booking-card {
+      background: #fff;
+      border: 2px solid #171716;
+      border-radius: 24px;
+      box-shadow: 14px 14px 0 #171716;
+      overflow: hidden;
+      width: 430px;
+    }
+    .window {
+      align-items: center;
+      background: #fafaf8;
+      border-bottom: 1px solid rgba(23, 23, 22, .13);
+      display: flex;
+      gap: 7px;
+      height: 42px;
+      padding: 0 16px;
+    }
+    .dot { background: rgba(23, 23, 22, .18); border-radius: 50%; height: 8px; width: 8px; }
+    .address {
+      background: rgba(23, 23, 22, .045);
+      border-radius: 5px;
+      color: #77756f;
+      font-size: 11px;
+      margin-left: 8px;
+      padding: 5px 10px;
+    }
+    .booking-body { padding: 22px 24px 23px; }
+    .booking-label {
+      align-items: center;
+      color: #6857d9;
+      display: flex;
+      font-size: 12px;
+      font-weight: 800;
+      gap: 7px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .calendar-icon {
+      border: 2px solid currentColor;
+      border-radius: 4px;
+      height: 15px;
+      position: relative;
+      width: 15px;
+    }
+    .calendar-icon::after {
+      border-top: 2px solid currentColor;
+      content: "";
+      left: 1px;
+      position: absolute;
+      right: 1px;
+      top: 4px;
+    }
+    h2 {
+      font-size: 27px;
+      letter-spacing: -.04em;
+      line-height: 1.05;
+      margin: 12px 0 6px;
+    }
+    .timezone { color: #77756f; font-size: 13px; margin: 0; }
+    .meeting {
+      align-items: center;
+      background: #f7f6ff;
+      border: 1.5px solid #6857d9;
+      border-radius: 14px;
       display: grid;
-      gap: 14px;
-      margin-left: 50px;
+      gap: 12px;
+      grid-template-columns: 42px 1fr 20px;
+      margin-top: 18px;
+      padding: 12px;
     }
-    .state {
-      background: rgba(17, 18, 47, .92);
-      border: 1px solid #343564;
-      border-radius: 16px;
-      padding: 20px 24px;
+    .clock {
+      align-items: center;
+      background: #6857d9;
+      border-radius: 10px;
+      color: #fff;
+      display: flex;
+      font-size: 20px;
+      height: 42px;
+      justify-content: center;
+      width: 42px;
     }
-    .state strong { display: block; font-size: 25px; margin-bottom: 5px; }
-    .state span { color: #bfc0d4; font-size: 17px; }
-    .state.refused { border: 2px solid #ff7c98; }
-    .state.refused strong { color: #ffb0c0; }
-    .arrow { color: #7367e9; font-size: 20px; margin-left: 26px; }
+    .meeting strong { display: block; font-size: 14px; }
+    .meeting small { color: #77756f; display: block; font-size: 11px; margin-top: 3px; }
+    .check { color: #6857d9; font-size: 19px; font-weight: 900; }
+    .month {
+      align-items: center;
+      border-top: 1px solid rgba(23, 23, 22, .12);
+      display: flex;
+      font-size: 13px;
+      font-weight: 750;
+      justify-content: space-between;
+      margin-top: 18px;
+      padding-top: 15px;
+    }
+    .month span { color: #77756f; font-size: 17px; }
+    .days { display: grid; gap: 6px; grid-template-columns: repeat(5, 1fr); margin-top: 11px; }
+    .day {
+      align-items: center;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: #696761;
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+      font-weight: 750;
+      height: 51px;
+      justify-content: center;
+    }
+    .day small { font-size: 8px; letter-spacing: .08em; margin-bottom: 3px; }
+    .day.selected { background: #6857d9; color: #fff; }
+    .times { display: grid; gap: 8px; grid-template-columns: repeat(3, 1fr); margin-top: 12px; }
+    .time {
+      border: 1px solid rgba(23, 23, 22, .15);
+      border-radius: 9px;
+      color: #696761;
+      font-size: 11px;
+      font-weight: 750;
+      padding: 10px 4px;
+      text-align: center;
+    }
+    .time.selected { background: #171716; border-color: #171716; color: #fff; }
+    .transports {
+      align-items: center;
+      color: #5f5d57;
+      display: flex;
+      font-size: 12px;
+      font-weight: 750;
+      gap: 11px;
+      justify-content: center;
+      letter-spacing: .04em;
+      margin-top: 26px;
+    }
+    .transports b { color: #6857d9; }
   </style>
 </head>
 <body>
-  <section>
-    <div class="brand"><div class="mark">S</div><div class="name">Project S</div></div>
-    <h1>People define authority.<br>Agents act within it.<br>PostgreSQL commits.</h1>
-    <p class="sub">Open-source, authority-bounded booking for humans and agents.</p>
-    <div class="meta">Apache-2.0 · public pre-alpha</div>
+  <section class="copy">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="Project S">
+        <rect width="64" height="64" rx="14" fill="#9b87f5"></rect>
+        <path d="M43.5 19.5c-3-2.4-6.8-3.7-11.4-3.7-8 0-13.4 4.2-13.4 10.4 0 5.4 3.6 8.4 11.8 10.2 5.2 1.1 6.8 2.2 6.8 4.2 0 2.3-2.2 3.7-5.8 3.7-4.4 0-8.1-1.6-11.3-4.8l-4.4 5.2c3.9 4 9.2 6.1 15.4 6.1 8.7 0 14.3-4.3 14.3-10.9 0-5.7-3.5-8.6-12-10.4-5-1.1-6.6-2.1-6.6-4 0-2.1 2-3.4 5.2-3.4 3.4 0 6.3 1.1 8.9 3.2z" fill="#fff"></path>
+      </svg>
+      <div class="name">Project S</div>
+    </div>
+    <div class="eyebrow">Open-source scheduling</div>
+    <h1>Booking infrastructure for humans and agents.</h1>
+    <p class="sub">A self-hostable booking system with a browser, HTTP API, TypeScript SDK, and local MCP.</p>
+    <div class="meta"><span>Public pre-alpha</span><span>Apache-2.0</span></div>
   </section>
-  <section class="flow" aria-label="Authority flow">
-    <div class="state"><strong>Prepared</strong><span>Non-holding request</span></div>
-    <div class="arrow">↓</div>
-    <div class="state refused"><strong>Refused</strong><span>No human authority yet</span></div>
-    <div class="arrow">↓</div>
-    <div class="state"><strong>Human authority</strong><span>Exact request approved</span></div>
-    <div class="arrow">↓</div>
-    <div class="state"><strong>Committed once</strong><span>Exact replay, no duplicate</span></div>
+  <section class="product" aria-label="Synthetic Project S booking-page preview">
+    <div class="booking-card">
+      <div class="window">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        <span class="address">project-s.local/book/demo-host</span>
+      </div>
+      <div class="booking-body">
+        <div class="booking-label"><span class="calendar-icon"></span> Booking page</div>
+        <h2>Book time with Demo Host</h2>
+        <p class="timezone">Times shown in America/Halifax</p>
+        <div class="meeting">
+          <span class="clock">◷</span>
+          <span><strong>Intro call</strong><small>30 minutes · synthetic fixture</small></span>
+          <span class="check">✓</span>
+        </div>
+        <div class="month"><span>‹</span>August 2026<span>›</span></div>
+        <div class="days">
+          <span class="day"><small>MON</small>24</span>
+          <span class="day"><small>TUE</small>25</span>
+          <span class="day selected"><small>WED</small>26</span>
+          <span class="day"><small>THU</small>27</span>
+          <span class="day"><small>FRI</small>28</span>
+        </div>
+        <div class="times">
+          <span class="time">9:00 AM</span>
+          <span class="time selected">10:30 AM</span>
+          <span class="time">1:00 PM</span>
+        </div>
+      </div>
+    </div>
+    <div class="transports"><b>Browser</b> · HTTP · TypeScript · MCP</div>
   </section>
 </body>
 </html>`;
@@ -328,30 +515,37 @@ const toWebp = async (page, png) => {
 await mkdir(outputRoot, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 try {
-  const authorityPage = await browser.newPage({ viewport: { width: 780, height: 720 } });
-  await authorityPage.setContent(authorityHtml, { waitUntil: 'load' });
-  await authorityPage.waitForFunction(() => globalThis.__assetsReady === true);
-  const authorityPng = await authorityPage.screenshot({ type: 'png', fullPage: true });
-  const authorityWebp = await toWebp(authorityPage, authorityPng);
-  await writeFile(
-    resolve(outputRoot, 'authority-boundary-overview.webp'),
-    authorityWebp,
-  );
+  if (renderAuthority) {
+    const authorityPage = await browser.newPage({ viewport: { width: 780, height: 720 } });
+    await authorityPage.setContent(authorityHtml, { waitUntil: 'load' });
+    await authorityPage.waitForFunction(() => globalThis.__assetsReady === true);
+    const authorityPng = await authorityPage.screenshot({ type: 'png', fullPage: true });
+    const authorityWebp = await toWebp(authorityPage, authorityPng);
+    await writeFile(
+      resolve(outputRoot, 'authority-boundary-overview.webp'),
+      authorityWebp,
+    );
+  }
 
-  const socialPage = await browser.newPage({ viewport: { width: 1280, height: 640 } });
-  await socialPage.setContent(socialHtml, { waitUntil: 'load' });
-  await socialPage.screenshot({
-    path: resolve(outputRoot, 'project-s-social-preview.png'),
-    type: 'png',
-  });
+  if (renderSocial) {
+    const socialPage = await browser.newPage({ viewport: { width: 1280, height: 640 } });
+    await socialPage.setContent(socialHtml, { waitUntil: 'load' });
+    await socialPage.screenshot({
+      path: resolve(outputRoot, 'project-s-social-preview.png'),
+      type: 'png',
+    });
+  }
 } finally {
   await browser.close();
 }
 
-const outputs = [
-  resolve(outputRoot, 'authority-boundary-overview.webp'),
-  resolve(outputRoot, 'project-s-social-preview.png'),
-];
+const outputs = [];
+if (renderAuthority) {
+  outputs.push(resolve(outputRoot, 'authority-boundary-overview.webp'));
+}
+if (renderSocial) {
+  outputs.push(resolve(outputRoot, 'project-s-social-preview.png'));
+}
 for (const output of outputs) {
   const bytes = await readFile(output);
   console.log(`${output}: ${bytes.length} bytes, sha256=${createHash('sha256').update(bytes).digest('hex')}`);
