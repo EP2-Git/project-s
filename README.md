@@ -216,7 +216,7 @@ In PowerShell, set the environment variable first with
 `$env:PROJECT_S_API_BASE_URL = "http://127.0.0.1:8080"`, then run
 `npm run mcp:stdio`.
 
-For setup details and troubleshooting, read [local development](docs/local-development.md). For a self-hosted evaluation, read [self-hosting](docs/self-hosting.md).
+For setup details and troubleshooting, read [local development](docs/local-development.md). For cross-platform clean-install verification, read [install verification](docs/install-verification.md). For a self-hosted evaluation, read [self-hosting](docs/self-hosting.md).
 
 ## Quality commands
 

@@ -137,6 +137,21 @@ browser API. The agent-native migration removes `anon`, `authenticated`, and
 the narrowly required service-role slot adapter access. Verify the effective
 grants in every target project before pointing traffic at `/api/v1`.
 
+
+## Cross-platform install smoke
+
+Every pull request runs a Docker-free install smoke on Ubuntu, macOS, and
+Windows runners. Locally:
+
+```sh
+npm ci
+npm run test:install-smoke
+```
+
+See [install-verification.md](install-verification.md) for the full clean-clone
+checklist (database start/reset, env generation, app start, Authority Boundary
+Demo) and how to record platform-specific gaps.
+
 ## Clean verification
 
 Before a release review, clone the candidate with `git clone --no-local` into an empty directory and repeat installation, reset, tests, and build. Success in an existing developer checkout is not sufficient evidence.
