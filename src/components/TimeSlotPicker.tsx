@@ -21,7 +21,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         key={slot.startAt}
         type="button"
         variant="outline"
-        className="h-12 justify-start px-3 py-2 shadow-sm transition-all hover:border-primary hover:shadow-md"
+        className="h-12 justify-start px-3 py-2 shadow-xs transition-all hover:border-primary hover:shadow-md"
         onClick={() => onSelectTimeSlot(slot)}
         aria-label={`Select ${formatSlotTime(slot.startAt, displayTimeZone)}`}
       >

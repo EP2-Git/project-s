@@ -28,7 +28,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, exc
         )}
       </div>
       <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-foreground/70 text-sm flex-grow">{description}</p>
+      <p className="text-foreground/70 text-sm grow">{description}</p>
     </div>
   </div>
 );

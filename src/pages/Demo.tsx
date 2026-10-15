@@ -142,7 +142,7 @@ const Demo = () => {
               {demoSteps.map((step, index) => {
                 const StepIcon = step.icon;
                 return (
-                  <li key={step.title} className="rounded-xl border bg-card p-5 shadow-sm">
+                  <li key={step.title} className="rounded-xl border bg-card p-5 shadow-xs">
                     <div className="flex items-start gap-4">
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <StepIcon className="h-5 w-5" aria-hidden="true" />

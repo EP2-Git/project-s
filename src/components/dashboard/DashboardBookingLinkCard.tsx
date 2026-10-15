@@ -47,7 +47,7 @@ const DashboardBookingLinkCard: React.FC<DashboardBookingLinkCardProps> = ({
   // If no username or new user, show the setup banner
   if (shouldShowSetupBanner) {
     return (
-      <div className="w-full max-w-xl mx-auto bg-card border border-border rounded-lg p-4 flex flex-col items-center gap-3 shadow-sm">
+      <div className="w-full max-w-xl mx-auto bg-card border border-border rounded-lg p-4 flex flex-col items-center gap-3 shadow-xs">
         <div className="flex-1 text-center">
           <div className="text-sm text-muted-foreground mb-3">
             {!username ?
@@ -97,7 +97,7 @@ const DashboardBookingLinkCard: React.FC<DashboardBookingLinkCardProps> = ({
 
   if (isCollapsed) {
     return (
-      <div className="w-full max-w-xl mx-auto bg-card border border-border rounded-lg p-3 flex justify-between items-center shadow-sm">
+      <div className="w-full max-w-xl mx-auto bg-card border border-border rounded-lg p-3 flex justify-between items-center shadow-xs">
         <span className="text-sm font-medium">Booking Link</span>
         <Button size="sm" variant="ghost" onClick={toggleCollapse} className="h-8 w-8 p-0">
           <PlusCircle className="h-4 w-4 text-muted-foreground" />
@@ -108,7 +108,7 @@ const DashboardBookingLinkCard: React.FC<DashboardBookingLinkCardProps> = ({
   }
 
   return (
-    <div className="w-full max-w-xl mx-auto bg-card border border-border rounded-lg p-4 flex flex-col sm:flex-row items-center gap-3 shadow-sm">
+    <div className="w-full max-w-xl mx-auto bg-card border border-border rounded-lg p-4 flex flex-col sm:flex-row items-center gap-3 shadow-xs">
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <div className="text-xs font-medium text-muted-foreground">Your booking link</div>
