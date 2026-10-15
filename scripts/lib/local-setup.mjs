@@ -162,6 +162,7 @@ export async function collectDoctor({ root = process.cwd(), env = process.env, r
   add('supabase', cliInstalled ? 'PASS' : 'WARN', cliInstalled ? 'Repository Supabase CLI and native binary are installed.' : 'Repository Supabase CLI is not ready.', 'Run npm ci, or use the default bootstrap which installs dependencies.');
 
   let containers = [];
+  let hasVolumes = false;
   let dbId;
   let dockerReady = false;
   const context = env.DOCKER_HOST && !env.DOCKER_CONTEXT
@@ -177,6 +178,9 @@ export async function collectDoctor({ root = process.cwd(), env = process.env, r
     dockerReady = success(info) && /^\d+\.\d+\.\d+/.test(String(info.stdout ?? '').trim());
     add('docker', dockerReady ? 'PASS' : 'FAIL', dockerReady ? 'Local Docker daemon is running.' : 'Local Docker daemon is unavailable.', 'Start the local Docker engine and wait until it is ready.');
     if (dockerReady) {
+      const volumes = invoke('docker', ['volume', 'ls', '--format', '{{.Name}}']);
+      if (!success(volumes)) add('volumes', 'FAIL', 'Local data volumes could not be inspected.', 'Check Docker permissions; no volumes were changed.');
+      else hasVolumes = String(volumes.stdout ?? '').split(/\r?\n/).some((name) => name.trim().endsWith(`_${projectId}`));
       const list = invoke('docker', ['ps', '-a', '--format', '{{json .}}']);
       if (!success(list)) add('containers', 'FAIL', 'Local containers could not be inspected.', 'Check Docker permissions; no containers were changed.');
       else {
@@ -201,9 +205,10 @@ export async function collectDoctor({ root = process.cwd(), env = process.env, r
     }
   } catch { add('ports', 'FAIL', 'Configured ports could not be checked.', 'Review supabase/config.toml and local port permissions.'); }
   const markerMatches = Boolean(dbId && marker?.databaseContainerId === dbId && marker?.root === root && marker?.projectId === projectId);
-  add('stack', containers.length ? 'WARN' : 'PASS', containers.length ? 'An existing disposable-project stack was found.' : 'No existing disposable-project containers found.', 'Default bootstrap refuses existing data. --reuse requires this checkout\'s verified bootstrap marker.');
+  const hasStack = containers.length > 0 || hasVolumes;
+  add('stack', hasStack ? 'WARN' : 'PASS', hasStack ? 'Existing disposable-project containers or retained data volumes were found.' : 'No existing disposable-project containers or data volumes found.', 'Default bootstrap refuses existing data. --reuse requires this checkout\'s verified bootstrap marker.');
   return { version: 1, ok: !checks.some((check) => check.status === 'FAIL'), checks,
-    state: { root, hasStack: containers.length > 0, markerMatches, dbId, cliInstalled, publicEnvExists, edgeEnvExists, dockerReady } };
+    state: { root, hasStack, markerMatches, dbId, cliInstalled, publicEnvExists, edgeEnvExists, dockerReady } };
 }
 
 export const reportDoctor = (result, log = console.log) => {

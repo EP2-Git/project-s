@@ -48,8 +48,10 @@ Docker must use a local Unix socket or Windows named pipe.
 
 ## Existing data and retries
 
-Default bootstrap refuses any existing `project-s-local` containers, including a
-stopped or partially created stack. It never removes containers or volumes.
+Default bootstrap refuses any existing `project-s-local` containers or retained
+data volumes, including a stopped or partially created stack. Removing a
+container does not imply its database volume is disposable. Bootstrap never
+removes containers or volumes.
 After a successful bootstrap in this checkout, use:
 
 ```sh

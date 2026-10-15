@@ -29,6 +29,7 @@ const runner = (root, overrides = {}) => (command, args) => {
     if (args[0] === 'context') return ok(JSON.stringify(overrides.endpoint ?? 'unix:///var/run/docker.sock'));
     if (args[0] === 'info') return overrides.dockerUnavailable ? { status: 1, stderr: 'private-diagnostic' } : ok('28.0.0');
     if (args[0] === 'ps') return ok(overrides.containers ?? '');
+    if (args[0] === 'volume') return overrides.volumeUnavailable ? { status: 1 } : ok(overrides.volumes ?? '');
     if (args[0] === 'inspect') return ok('a'.repeat(64));
   }
   if (args.at(-1) === '--version') return ok('10.9.2');
@@ -166,6 +167,17 @@ test('existing published stack ports are recognized without claiming an unknown 
   assert.equal(result.state.markerMatches, false);
   assert.equal(result.checks.find((check) => check.id === 'port-54322').status, 'PASS');
   assert.throws(() => bootstrapPlan(result.state), /refuses to reset/);
+});
+
+test('retained data volumes refuse fresh setup even after containers were removed', async () => {
+  const result = await inspectFixture(fixture(), { volumes: 'unrelated_volume\nsupabase_db_project-s-local\n' });
+  assert.equal(result.state.hasStack, true);
+  assert.throws(() => bootstrapPlan(result.state), /Existing local data/);
+  assert.throws(() => bootstrapPlan(result.state, { reuse: true }), /verified/);
+});
+
+test('volume-inspection failure cannot be treated as an empty disposable stack', async () => {
+  assert.equal((await inspectFixture(fixture(), { volumeUnavailable: true })).ok, false);
 });
 
 test('bootstraps in separate checkouts cannot race the same disposable project', () => {
