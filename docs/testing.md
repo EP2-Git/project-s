@@ -42,6 +42,9 @@ The initial Vitest gate measures an explicit focused set: the repository scanner
 
 ## Local verification order
 
+The [coverage expansion inventory](coverage-inventory.md) separates measured
+modules from test presence and prioritizes the next boundary-level evidence.
+
 Build the shared packages before starting Supabase because the Edge Function
 imports their compiled output:
 
