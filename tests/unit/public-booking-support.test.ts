@@ -51,4 +51,16 @@ describe('browser confirmation support boundary', () => {
     expect(() => publicBookingService.confirmPreparation({ preparationToken: 'invalid' })).toThrow();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('rejects non-JSON success responses without exposing their contents', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('private upstream diagnostic', { status: 200 })));
+    await expect(publicBookingService.confirmPreparation({ preparationToken }))
+      .rejects.toMatchObject({ code: 'INTERNAL_ERROR', message: 'The scheduling service returned an invalid response.' });
+  });
+
+  it('keeps malformed upstream failure details out of the public message', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: 'private upstream diagnostic' }), { status: 503 })));
+    await expect(publicBookingService.confirmPreparation({ preparationToken }))
+      .rejects.toMatchObject({ code: 'INTERNAL_ERROR', message: 'The scheduling service is temporarily unavailable. Please try again.' });
+  });
 });

@@ -1,7 +1,7 @@
 # Coverage expansion inventory
 
 This is the first bounded unit for issue #12, not completion of application-wide
-coverage. The existing focused thresholds remain unchanged. Test presence and
+coverage. The focused numeric thresholds remain unchanged and now apply per file. Test presence and
 measured coverage are different evidence.
 
 ## Local baseline (2026-10-14)
@@ -16,8 +16,22 @@ every scheduling module meets 90% branches. `publicBooking.ts` contributes only
 four re-export statements; contract-package behavior needs its own coverage
 instrumentation. The new service tests are outside the measured include.
 
-Docker was unavailable; no database, generated-type, concurrency or live
-browser evidence is asserted for this change.
+Docker was unavailable for that local baseline. Hosted validation of subsequent
+candidates is recorded separately in their PRs.
+
+## Expanded focused gate (2026-10-15)
+
+Invalid/missing timezone inputs and browsers without `Intl.supportedValuesOf`
+now have regression cases. The focused report covers all 23 branches, including
+7/7 in `time.ts`; lines/statements/functions also measure 100%. The existing
+95% lines/functions/statements and 90% branch floors now apply to each included
+file, so scanner branches cannot compensate for a time-helper gap.
+
+The root suite has 83 passing tests. Confirmation support also rejects non-JSON
+successes and malformed upstream failures without exposing diagnostics in public
+messages. These service tests remain outside the measured include; contract
+re-exports remain distinct from instrumented contract-package behavior. There
+is no application-wide coverage claim or threshold reduction.
 
 | Boundary | Existing evidence | Unmeasured risk and next useful layer |
 | --- | --- | --- |

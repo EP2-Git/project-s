@@ -38,7 +38,7 @@ No test may use a paid API, production project, or real personal data.
 - responsive: no horizontal overflow at 320, 390, 768, 1024, and 1440 CSS pixels;
 - Chromium, Firefox, and WebKit core flows pass.
 
-The initial Vitest gate measures an explicit focused set: the repository scanner, public-booking DTO schemas, and timezone/display helpers. It enforces 95% lines/functions/statements and 90% branches across that set. The package and MCP tests are additive but are not yet proof of application-wide coverage. A supported Core release remains blocked until broader thresholds cover the scheduling, application, gateway, service, and UI modules they describe; honest public pre-alpha source may be published with this limitation stated explicitly.
+The initial Vitest gate measures an explicit focused set: the repository scanner, public-booking DTO re-exports, and timezone/display helpers. It enforces 95% lines/functions/statements and 90% branches per included file. Contract-package tests exercise the schemas separately; the re-export file is not schema-wide coverage. The package and MCP tests are additive but are not yet proof of application-wide coverage. A supported Core release remains blocked until broader thresholds cover the scheduling, application, gateway, service, and UI modules they describe; honest public pre-alpha source may be published with this limitation stated explicitly.
 
 ## Local verification order
 
