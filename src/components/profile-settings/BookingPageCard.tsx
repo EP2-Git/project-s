@@ -46,7 +46,7 @@ const BookingPageCard: React.FC<BookingPageCardProps> = ({ profileUrl, username 
         <div className="flex flex-col space-y-4">
           <div className="flex items-center p-3 border rounded-md bg-muted/30">
             <div className="flex items-center flex-1 overflow-hidden">
-              <LinkIcon className="h-4 w-4 mr-2 text-muted-foreground flex-shrink-0" />
+              <LinkIcon className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
               <span className="text-sm truncate">{profileUrl}</span>
             </div>
             <TooltipProvider>

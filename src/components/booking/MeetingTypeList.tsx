@@ -34,7 +34,7 @@ const MeetingTypeList: React.FC<MeetingTypeListProps> = ({
               aria-pressed={selected}
               onClick={() => onSelect(type)}
               className={cn(
-                'w-full rounded-lg border p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                'w-full rounded-lg border p-4 shadow-xs transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                 selected && 'border-primary/60 bg-primary/5 shadow-md',
               )}
             >

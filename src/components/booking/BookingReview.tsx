@@ -71,7 +71,7 @@ const BookingReview = ({
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name</dt>
-          <dd className="mt-1 break-words">{summary.booker.name}</dd>
+          <dd className="mt-1 wrap-break-word">{summary.booker.name}</dd>
         </div>
         <div>
           <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Email</dt>
@@ -80,7 +80,7 @@ const BookingReview = ({
         {summary.booker.notes && (
           <div className="sm:col-span-2">
             <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</dt>
-            <dd className="mt-1 whitespace-pre-wrap break-words">{summary.booker.notes}</dd>
+            <dd className="mt-1 whitespace-pre-wrap wrap-break-word">{summary.booker.notes}</dd>
           </div>
         )}
       </dl>
