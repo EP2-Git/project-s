@@ -5,6 +5,9 @@
 - **Contract/application/SDK suites** cover strict DTOs, operation metadata,
   authorization/scope enforcement, abuse checks, and HTTP normalization.
 - **Vitest** covers pure scheduling/time rules, validation, browser services, and repository security tooling.
+- **Local setup tests** cover prerequisite refusals, redaction, existing-data
+  preservation and cross-checkout bootstrap locking without Docker. They run
+  on Ubuntu, macOS and Windows; the fresh Docker bootstrap runs in Ubuntu CI.
 - **MCP protocol tests** cover deterministic four-tool discovery, modern stdio
   envelopes, cancellation, schema/results, redacted text, and SDK-only transport.
 - **Golden parity tests** drive one shared four-operation vector set through the

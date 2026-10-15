@@ -74,6 +74,8 @@ jobs:
         run: npm ci
       - name: Cross-platform install smoke
         run: npm run test:install-smoke
+      - name: Local setup failure and preservation checks
+        run: npm run test:setup
 
   database:
     name: Reproducible database and RLS
@@ -88,7 +90,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run db:start
+      - name: Bootstrap a fresh disposable local stack
+        run: npm run bootstrap -- --skip-install
+      - name: Prove existing data refusal and reuse preservation
+        run: node scripts/check-local-bootstrap.mjs
       - run: npm run db:reset
       - name: Prove a second clean reset
         run: npm run db:reset
