@@ -119,6 +119,7 @@ jobs:
       - run: npm run db:env
       - run: npm run test:agent-flow
       - run: npm run test:e2e:install
+      - run: npm run test:built-app
       - run: npm run test:e2e
       - name: Upload browser report
         if: always()

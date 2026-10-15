@@ -46,7 +46,7 @@ const CalendarEventItem: React.FC<CalendarEventItemProps> = ({
               "border-l-2 min-h-[48px] md:min-h-[60px]",
               "flex flex-col justify-between",
               "border-lavender bg-lavender/20",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             )}
             onClick={onClick}
           >

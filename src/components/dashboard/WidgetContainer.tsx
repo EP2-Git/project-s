@@ -36,7 +36,7 @@ const WidgetContainer: React.FC<WidgetContainerProps> = ({
   return (
     <div
       className={cn(
-        "bg-card border border-border rounded-lg shadow-sm transition-all duration-200",
+        "bg-card border border-border rounded-lg shadow-xs transition-all duration-200",
         className
       )}
     >

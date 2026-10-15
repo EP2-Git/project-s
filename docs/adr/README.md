@@ -9,6 +9,7 @@ ADR is the durable repository record.
 | ADR | Status | Decision |
 | --- | --- | --- |
 | [0001](0001-agent-native-public-booking-boundary.md) | Accepted | Agent-native public booking boundary and database authority. |
+| [0002](0002-tailwind-4-build-toolchain.md) | Accepted for implementation | Tailwind 4 build toolchain and browser styling compatibility. |
 
 The [public booking capability ledger](public-booking-capability-ledger.md)
 tracks the current four-operation contract and is reviewed alongside ADR 0001.

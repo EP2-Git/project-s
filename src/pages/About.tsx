@@ -62,7 +62,7 @@ const About: React.FC = () => {
                 Project S keeps free-slot calculation and final conflict checks on the server while presenting dates and times in an explicit guest-selected time zone.
               </p>
             </div>
-            <div className="flex h-64 w-64 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-lavender to-lavender-dark/70">
+            <div className="flex h-64 w-64 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-lavender to-lavender-dark/70">
               <Calendar className="h-24 w-24 text-white opacity-90" aria-hidden="true" />
             </div>
           </div>

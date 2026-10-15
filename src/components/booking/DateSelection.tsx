@@ -25,7 +25,7 @@ const DateSelection: React.FC<DateSelectionProps> = ({
   const maximum = dateKeyToCalendarDate(maxDate);
 
   return (
-    <section className="relative rounded-lg border bg-card p-3 shadow-sm" aria-labelledby="select-date-title">
+    <section className="relative rounded-lg border bg-card p-3 shadow-xs" aria-labelledby="select-date-title">
       <div className="mb-2 flex items-center gap-2">
         <CalendarDays className="h-4 w-4 text-primary" aria-hidden="true" />
         <h3 id="select-date-title" className="text-base font-medium">

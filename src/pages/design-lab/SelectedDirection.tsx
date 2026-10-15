@@ -80,7 +80,7 @@ const Header = () => (
       <Link
         to="/"
         aria-label="Project S home"
-        className="flex min-h-11 items-center gap-2.5 rounded-sm font-semibold tracking-[-0.03em] outline-none focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+        className="flex min-h-11 items-center gap-2.5 rounded-sm font-semibold tracking-[-0.03em] outline-hidden focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
       >
         <ProjectSMark />
         <span className="text-[17px]">Project S</span>
@@ -89,19 +89,19 @@ const Header = () => (
       <nav aria-label="Selected concept navigation" className="hidden items-center gap-7 md:flex">
         <a
           href="#proof"
-          className="rounded-sm text-sm text-black/65 outline-none transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+          className="rounded-sm text-sm text-black/65 outline-hidden transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
         >
           Proof today
         </a>
         <a
           href="#north-star"
-          className="rounded-sm text-sm text-black/65 outline-none transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+          className="rounded-sm text-sm text-black/65 outline-hidden transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
         >
           North star
         </a>
         <a
           href="#ownership"
-          className="rounded-sm text-sm text-black/65 outline-none transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+          className="rounded-sm text-sm text-black/65 outline-hidden transition-colors hover:text-black focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
         >
           Ownership
         </a>
@@ -113,7 +113,7 @@ const Header = () => (
         </span>
         <Link
           to="/demo"
-          className="hidden min-h-11 items-center gap-2 rounded-full bg-[#171716] px-5 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#343330] focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef] sm:inline-flex"
+          className="hidden min-h-11 items-center gap-2 rounded-full bg-[#171716] px-5 text-sm font-semibold text-white outline-hidden transition-colors hover:bg-[#343330] focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef] sm:inline-flex"
         >
           Authority demo
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -121,7 +121,7 @@ const Header = () => (
         <a
           href="#proof"
           aria-label="Jump to current proof"
-          className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-black/15 outline-none hover:border-black/35 focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef] sm:hidden"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-black/15 outline-hidden hover:border-black/35 focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef] sm:hidden"
         >
           <Menu className="h-5 w-5" aria-hidden="true" />
         </a>
@@ -160,7 +160,7 @@ const MiniCalendar = ({
           type="button"
           aria-label="Previous month"
           onClick={onPreviousMonth}
-          className="flex min-h-9 min-w-9 items-center justify-center rounded-full border border-black/10 text-black/55 outline-none hover:border-black/30 focus-visible:ring-2 focus-visible:ring-[#6857d9]"
+          className="flex min-h-9 min-w-9 items-center justify-center rounded-full border border-black/10 text-black/55 outline-hidden hover:border-black/30 focus-visible:ring-2 focus-visible:ring-[#6857d9]"
         >
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -171,7 +171,7 @@ const MiniCalendar = ({
           type="button"
           aria-label="Next month"
           onClick={onNextMonth}
-          className="flex min-h-9 min-w-9 items-center justify-center rounded-full border border-black/10 text-black/55 outline-none hover:border-black/30 focus-visible:ring-2 focus-visible:ring-[#6857d9]"
+          className="flex min-h-9 min-w-9 items-center justify-center rounded-full border border-black/10 text-black/55 outline-hidden hover:border-black/30 focus-visible:ring-2 focus-visible:ring-[#6857d9]"
         >
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -183,7 +183,7 @@ const MiniCalendar = ({
             type="button"
             aria-pressed={day.date === selectedDate}
             onClick={() => onSelectDate(day.date)}
-            className={`flex min-h-[54px] min-w-0 flex-col items-center justify-center rounded-lg border text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[#6857d9] ${
+            className={`flex min-h-[54px] min-w-0 flex-col items-center justify-center rounded-lg border text-center outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-[#6857d9] ${
               day.date === selectedDate
                 ? 'border-[#6857d9] bg-[#6857d9] text-white'
                 : 'border-transparent text-black/55 hover:border-black/15 hover:text-black'
@@ -266,7 +266,7 @@ const BookingPagePreview = () => {
               type="button"
               aria-pressed={time === selectedTime}
               onClick={() => setSelectedTime(time)}
-              className={`min-h-10 min-w-0 rounded-lg border px-1 text-[10px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#6857d9] ${
+              className={`min-h-10 min-w-0 rounded-lg border px-1 text-[10px] font-semibold outline-hidden focus-visible:ring-2 focus-visible:ring-[#6857d9] ${
                 time === selectedTime
                   ? 'border-[#6857d9] bg-[#6857d9] text-white'
                   : 'border-black/10 text-black/65 hover:border-black/30'
@@ -383,14 +383,14 @@ const Hero = () => (
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             to="/demo"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#6857d9] px-6 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#5747c3] focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#6857d9] px-6 text-sm font-semibold text-white outline-hidden transition-colors hover:bg-[#5747c3] focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
           >
             See the current proof
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <a
             href="#north-star"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-black/20 px-6 text-sm font-semibold text-[#171716] outline-none transition-colors hover:border-black/45 focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-black/20 px-6 text-sm font-semibold text-[#171716] outline-hidden transition-colors hover:border-black/45 focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
           >
             Explore the north star
           </a>
@@ -558,7 +558,7 @@ const AuthoritySection = () => (
           </p>
           <Link
             to="/demo"
-            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-black/25 px-5 text-sm font-semibold text-[#171716] outline-none transition-colors hover:border-black/55 focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
+            className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-black/25 px-5 text-sm font-semibold text-[#171716] outline-hidden transition-colors hover:border-black/55 focus-visible:ring-2 focus-visible:ring-[#6857d9] focus-visible:ring-offset-4 focus-visible:ring-offset-[#f4f3ef]"
           >
             Run the Authority Boundary Demo
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -812,7 +812,7 @@ const OperatingChoice = ({
         {status}
       </span>
     </div>
-    <h3 className="mt-12 text-3xl font-semibold tracking-[-0.05em] sm:text-4xl">{title}</h3>
+    <h3 className="mt-12 text-3xl font-semibold tracking-tighter sm:text-4xl">{title}</h3>
     <div className={`mt-5 max-w-xl text-sm leading-6 ${inverse ? 'text-white/60' : 'text-black/58'}`}>
       {children}
     </div>
@@ -911,14 +911,14 @@ const FinalSection = () => (
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
             <Link
               to="/demo"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#6857d9] px-6 text-sm font-semibold text-white outline-none transition-colors hover:bg-[#5948c6] focus-visible:ring-2 focus-visible:ring-[#aaa0ff] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171716]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#6857d9] px-6 text-sm font-semibold text-white outline-hidden transition-colors hover:bg-[#5948c6] focus-visible:ring-2 focus-visible:ring-[#aaa0ff] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171716]"
             >
               Open the authority demo
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
               to="/book/demo-host"
-              className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/25 px-6 text-sm font-semibold text-white outline-none transition-colors hover:border-white/55 focus-visible:ring-2 focus-visible:ring-[#aaa0ff] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171716]"
+              className="inline-flex min-h-12 items-center justify-center rounded-full border border-white/25 px-6 text-sm font-semibold text-white outline-hidden transition-colors hover:border-white/55 focus-visible:ring-2 focus-visible:ring-[#aaa0ff] focus-visible:ring-offset-4 focus-visible:ring-offset-[#171716]"
             >
               Try the booking page
             </Link>
@@ -937,7 +937,7 @@ const Footer = () => (
         <span className="font-semibold">Project S</span>
       </div>
       <p>Authority-bounded scheduling infrastructure for people, software, and agents.</p>
-      <p className="font-mono text-[10px] uppercase tracking-[0.1em]">Noindex · human review candidate</p>
+      <p className="font-mono text-[10px] uppercase tracking-widest">Noindex · human review candidate</p>
     </div>
   </footer>
 );
@@ -978,7 +978,7 @@ const SelectedDirection = () => {
     >
       <a
         href="#main-content"
-        className="fixed left-4 top-3 z-50 -translate-y-24 rounded-md bg-[#171716] px-4 py-3 text-sm font-semibold text-white outline-none transition-transform focus:translate-y-0 focus:ring-2 focus:ring-[#aaa0ff]"
+        className="fixed left-4 top-3 z-50 -translate-y-24 rounded-md bg-[#171716] px-4 py-3 text-sm font-semibold text-white outline-hidden transition-transform focus:translate-y-0 focus:ring-2 focus:ring-[#aaa0ff]"
       >
         Skip to content
       </a>

@@ -13,7 +13,7 @@ const getHomeUrl = () => {
 const BookingHeader: React.FC = () => {
   const homeUrl = getHomeUrl();
   return (
-    <div className="border-b border-border bg-gradient-to-r from-background via-background/98 to-background/95 shadow-sm">
+    <div className="border-b border-border bg-linear-to-r from-background via-background/98 to-background/95 shadow-xs">
       <div className="container mx-auto py-4 px-6 flex items-center justify-between">
         <Logo size="lg" showBanner={true} />
         <a
