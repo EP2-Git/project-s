@@ -41,15 +41,15 @@ const DateAvailabilitySettings: React.FC<DateAvailabilitySettingsProps> = ({
           className="flex flex-col space-y-2"
         >
           <div className="flex items-center space-x-3">
-            <RadioGroupItem value="default" id="default" className="flex-shrink-0" />
+            <RadioGroupItem value="default" id="default" className="shrink-0" />
             <Label htmlFor="default" className="text-sm leading-none cursor-pointer">Use weekly default</Label>
           </div>
           <div className="flex items-center space-x-3">
-            <RadioGroupItem value="available" id="available" className="flex-shrink-0" />
+            <RadioGroupItem value="available" id="available" className="shrink-0" />
             <Label htmlFor="available" className="text-sm leading-none cursor-pointer">Available (Custom Hours)</Label>
           </div>
           <div className="flex items-center space-x-3">
-            <RadioGroupItem value="unavailable" id="unavailable" className="flex-shrink-0" />
+            <RadioGroupItem value="unavailable" id="unavailable" className="shrink-0" />
             <Label htmlFor="unavailable" className="text-sm leading-none cursor-pointer">Unavailable all day</Label>
           </div>
         </RadioGroup>

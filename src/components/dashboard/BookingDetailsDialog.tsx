@@ -56,7 +56,7 @@ const BookingDetailsDialog: React.FC<BookingDetailsDialogProps> = ({
 
         <div className="space-y-4 mt-4">
           <div className="flex items-start gap-2">
-            <Calendar className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <Calendar className="h-5 w-5 text-primary mt-0.5 shrink-0" />
             <div>
               <p className="font-medium">When</p>
               <p className="text-muted-foreground text-sm">
@@ -69,7 +69,7 @@ const BookingDetailsDialog: React.FC<BookingDetailsDialogProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary flex-shrink-0" />
+            <Clock className="h-5 w-5 text-primary shrink-0" />
             <div>
               <p className="font-medium">Duration</p>
               <p className="text-muted-foreground text-sm">
@@ -80,7 +80,7 @@ const BookingDetailsDialog: React.FC<BookingDetailsDialogProps> = ({
 
           {event.bookerName && (
             <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-primary flex-shrink-0" />
+              <User className="h-5 w-5 text-primary shrink-0" />
               <div>
                 <p className="font-medium">Guest</p>
                 <p className="text-muted-foreground text-sm">{event.bookerName}</p>
@@ -90,7 +90,7 @@ const BookingDetailsDialog: React.FC<BookingDetailsDialogProps> = ({
 
           {event.bookerEmail && (
             <div className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary flex-shrink-0" />
+              <Mail className="h-5 w-5 text-primary shrink-0" />
               <div>
                 <p className="font-medium">Email</p>
                 {safeMailtoHref ? (
@@ -106,10 +106,10 @@ const BookingDetailsDialog: React.FC<BookingDetailsDialogProps> = ({
 
           {event.notes && (
             <div className="flex items-start gap-2">
-              <MessageSquare className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" aria-hidden="true" />
+              <MessageSquare className="h-5 w-5 text-primary mt-0.5 shrink-0" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="font-medium">Guest notes</p>
-                <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{event.notes}</p>
+                <p className="whitespace-pre-wrap wrap-break-word text-sm text-muted-foreground">{event.notes}</p>
               </div>
             </div>
           )}

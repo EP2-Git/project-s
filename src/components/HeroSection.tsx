@@ -19,7 +19,7 @@ const HeroSection = () => {
         <div className="flex flex-col lg:flex-row items-center justify-between gap-8 md:gap-12">
           <div className="flex-1 space-y-6 md:space-y-8 text-center lg:text-left">
             <div className="space-y-4 md:space-y-6">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold leading-tight">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-bold leading-tight sm:leading-10 md:leading-none">
                 <span className="inline-block">Project S –</span>{" "}
                 <span className="inline-block">Agents prepare. People approve.</span>{" "}
                 <span className="text-lavender inline-block">The database commits.</span>
@@ -48,7 +48,7 @@ const HeroSection = () => {
           </div>
 
           <div className="flex-1 relative w-full max-w-md mx-auto lg:max-w-none">
-            <div className="bg-gradient-to-br from-lavender/20 to-lavender/5 rounded-2xl p-1.5">
+            <div className="bg-linear-to-br from-lavender/20 to-lavender/5 rounded-2xl p-1.5">
               <div className="glass-card rounded-xl p-4 md:p-6 animate-float">
                 <div className="flex items-center mb-4 space-x-3">
                   <Calendar className="h-5 w-5 text-lavender" />
@@ -61,7 +61,7 @@ const HeroSection = () => {
                       key={i}
                       aria-pressed={i === selectedTimeSlot}
                       aria-label={`Select ${10 + i}:00${i < 2 ? 'am' : 'pm'}`}
-                      className={`relative p-2 md:p-3 rounded-lg border text-center cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                      className={`relative p-2 md:p-3 rounded-lg border text-center cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
                         i === selectedTimeSlot ? 'border-lavender bg-lavender/10 text-lavender' : 'border-border hover:border-lavender/50'
                       }`}
                       onClick={() => handleTimeSlotClick(i)}
@@ -96,7 +96,7 @@ const HeroSection = () => {
                 </div>
                 <div className="p-2 md:p-3 bg-foreground/5 rounded-lg">
                   <div className="flex mb-1 md:mb-2">
-                    <div className="h-2 w-2 rounded-full bg-lavender mt-1 mr-2 flex-shrink-0" />
+                    <div className="h-2 w-2 rounded-full bg-lavender mt-1 mr-2 shrink-0" />
                     <p className="text-xs md:text-sm font-medium">Server-validated free slots</p>
                   </div>
                   <p className="text-xs text-foreground/70 ml-4">Based on host availability and existing bookings</p>
@@ -104,7 +104,7 @@ const HeroSection = () => {
               </div>
             </div>
 
-            <div className="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 bg-lavender/80 backdrop-blur-sm px-3 py-1 md:px-4 md:py-2 rounded-lg text-white text-xs md:text-sm font-medium">
+            <div className="absolute -bottom-4 -right-4 md:-bottom-6 md:-right-6 bg-lavender/80 backdrop-blur-xs px-3 py-1 md:px-4 md:py-2 rounded-lg text-white text-xs md:text-sm font-medium">
               <span>Time-zone aware</span>
             </div>
           </div>
