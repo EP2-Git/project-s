@@ -90,8 +90,15 @@ the actual Edge router and the documented DST, stale-state, idempotency, and
 
 ## CI jobs
 
+`npm run test:built-app` builds the self-hosted production bundle with synthetic
+configuration and opens login, signup, demo and confirmation in Chromium,
+Firefox and WebKit. It catches production module initialization failures that
+development-server tests cannot detect. It never authenticates or creates data.
+
 - `quality`: install, lint, typecheck, contract/application/SDK/MCP and unit
   coverage, build, audit, current-tree scan, licenses;
+- `install-smoke`: `npm ci` plus Docker-free build/typecheck smoke on Ubuntu,
+  macOS, and Windows (see [install-verification.md](install-verification.md));
 - `database`: fresh local stack, two readiness-checked resets, lint, directory-scoped pgTAP, 50 isolated collision pairs, and generated-type drift;
 - `e2e`: seeded local stack, live stdio-MCP parity flow, and all browser projects;
 - publication workflow: full-history secret scan and clean-room checks.

@@ -18,7 +18,7 @@ const MeetingTypeInfo: React.FC<MeetingTypeInfoProps> = ({ meetingType }) => (
         <span>{meetingType.durationMinutes} minutes</span>
       </div>
       {meetingType.description && (
-        <p className="mt-2 line-clamp-2 break-words text-sm text-muted-foreground">
+        <p className="mt-2 line-clamp-2 wrap-break-word text-sm text-muted-foreground">
           {meetingType.description}
         </p>
       )}

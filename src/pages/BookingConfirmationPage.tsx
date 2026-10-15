@@ -96,7 +96,7 @@ const BookingConfirmationPage = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <BookingHeader />
-      <main className="flex flex-grow items-center justify-center p-4 sm:p-6">
+      <main className="flex grow items-center justify-center p-4 sm:p-6">
         <Card className="w-full max-w-3xl shadow-md" aria-labelledby="confirmation-page-title">
           <CardHeader className="border-b">
             <p className="text-sm font-medium text-muted-foreground">Authority boundary</p>
@@ -123,7 +123,7 @@ const BookingConfirmationPage = () => {
                   ref={approvalTitleRef}
                   id="approval-title"
                   tabIndex={-1}
-                  className="mt-4 text-2xl font-semibold outline-none"
+                  className="mt-4 text-2xl font-semibold outline-hidden"
                 >
                   Human authority recorded
                 </h2>

@@ -95,7 +95,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           ref={errorRef}
           role="alert"
           tabIndex={-1}
-          className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden="true" />
           <div>

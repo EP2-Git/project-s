@@ -97,9 +97,9 @@ function Calendar({
         table: "w-full border-collapse space-y-1",
         head_row: "flex w-full justify-between",
         head_cell:
-          "text-muted-foreground rounded-md w-10 font-normal text-[0.8rem] flex-shrink-0",
+          "text-muted-foreground rounded-md w-10 font-normal text-[0.8rem] shrink-0",
         row: "flex w-full mt-2 justify-between",
-        cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent",
+        cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected].day-outside)]:bg-accent/50 has-aria-[selected]:bg-accent",
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-10 w-10 p-0 font-normal aria-selected:opacity-100 rounded-full flex items-center justify-center"

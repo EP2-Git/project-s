@@ -257,7 +257,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({ embed = false }) 
     return (
       <div className={shellClass}>
         {!embed && <BookingHeader />}
-        <div className="flex flex-grow items-center justify-center p-4">
+        <div className="flex grow items-center justify-center p-4">
           <LoadingState />
         </div>
       </div>
@@ -268,7 +268,7 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({ embed = false }) 
     return (
       <div className={shellClass}>
         {!embed && <BookingHeader />}
-        <div className="flex flex-grow items-center justify-center p-4">
+        <div className="flex grow items-center justify-center p-4">
           <ErrorState
             message={messageFrom(pageQuery.error)}
             onRetry={() => pageQuery.refetch()}
@@ -286,8 +286,8 @@ const PublicBookingPage: React.FC<PublicBookingPageProps> = ({ embed = false }) 
       <main
         className={
           embed
-            ? 'flex flex-grow items-start justify-center p-2 sm:p-4'
-            : 'flex flex-grow items-center justify-center p-4 sm:p-6 md:p-8'
+            ? 'flex grow items-start justify-center p-2 sm:p-4'
+            : 'flex grow items-center justify-center p-4 sm:p-6 md:p-8'
         }
       >
         <Card

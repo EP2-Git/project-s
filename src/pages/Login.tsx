@@ -74,7 +74,7 @@ const Login = () => {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
+            <div className="form-field-stack">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -87,7 +87,7 @@ const Login = () => {
                 required
               />
             </div>
-            <div className="space-y-2">
+            <div className="form-field-stack">
               <div>
                 <Label htmlFor="password">Password</Label>
               </div>

@@ -173,7 +173,7 @@ const CalendarWeekGrid: React.FC<CalendarWeekGridProps> = ({
         role="region"
         aria-label="Calendar events"
         tabIndex={0}
-        className="grid grid-flow-col auto-cols-fr gap-2 overflow-x-auto pb-2 scrollbar-thin focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="grid grid-flow-col auto-cols-fr gap-2 overflow-x-auto pb-2 scrollbar-thin focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         style={{
           gridAutoColumns: `minmax(${isMobile ? '140px' : '180px'}, 1fr)`,
           overscrollBehavior: 'contain',

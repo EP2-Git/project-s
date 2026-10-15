@@ -20,22 +20,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [react()],
-    build: {
-      rolldownOptions: {
-        output: {
-          codeSplitting: {
-            groups: [
-              {
-                name: "vendor",
-                test: /node_modules[\\/]/,
-                maxSize: 400_000,
-                priority: 10,
-              },
-            ],
-          },
-        },
-      },
-    },
+    // Let Rolldown preserve dependency initialization order across lazy routes.
     resolve: {
       alias: {
         "@": path.resolve(import.meta.dirname, "./src"),

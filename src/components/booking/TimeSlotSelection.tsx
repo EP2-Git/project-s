@@ -24,10 +24,10 @@ const TimeSlotSelection: React.FC<TimeSlotSelectionProps> = ({
   onRetry,
   onSelectTimeSlot,
 }) => (
-  <section className="h-full rounded-lg border bg-card p-4 shadow-sm" aria-labelledby="available-times-title">
+  <section className="h-full rounded-lg border bg-card p-4 shadow-xs" aria-labelledby="available-times-title">
     <div className="mb-3 flex items-center gap-2">
       <Clock className="h-4 w-4 text-primary" aria-hidden="true" />
-      <h3 id="available-times-title" className="break-words text-base font-medium">
+      <h3 id="available-times-title" className="wrap-break-word text-base font-medium">
         Available times for {formatDateKey(selectedDate, { weekday: 'long', month: 'long', day: 'numeric' })}
       </h3>
     </div>
