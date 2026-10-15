@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { arch, tmpdir } from 'node:os';
 import { dirname, join, sep } from 'node:path';
 import { acquireBootstrapLock, bootstrapPlan, collectDoctor, configuredPorts, environmentProblems, isLoopbackUrl, npmInvocation, parseEnv, runBootstrap } from '../../scripts/lib/local-setup.mjs';
 
@@ -46,6 +46,20 @@ test('fresh checkout doctor is read-only and allows missing generated files as w
   assert.equal(existsSync(join(f.root, '.cache')), false);
   assert.equal(readFileSync(join(f.root, 'supabase/config.toml'), 'utf8'), config);
   assert.ok(result.checks.some((check) => check.id === 'environment' && check.status === 'WARN'));
+});
+
+test('doctor inspects native CLI files without invoking its cache-writing version command', async () => {
+  const f = fixture(); const calls = [];
+  const platform = { win32: 'windows', darwin: 'darwin', linux: 'linux' }[process.platform];
+  const prefix = `node_modules/@supabase/cli-${platform}-${arch()}`;
+  f.write('node_modules/supabase/dist/supabase.js', '');
+  f.write(`${prefix}/package.json`, '{}');
+  f.write(`${prefix}/bin/supabase${process.platform === 'win32' ? '.exe' : ''}`, '');
+  const base = runner(f.root);
+  const result = await inspectFixture(f, {}, { run: (command, args) => { calls.push(args); return base(command, args); } });
+  assert.equal(result.state.cliInstalled, true);
+  assert.ok(!calls.flat().some((arg) => arg.includes('supabase.js')));
+  assert.equal(existsSync(join(f.root, 'supabase/.temp')), false);
 });
 test('refuses linked checkout and never includes the project ref in diagnostics', async () => {
   const f = fixture(); f.write('supabase/.temp/project-ref', 'private-project-ref');
@@ -170,4 +184,16 @@ test('bootstrap releases its lock on failure so a corrected retry can proceed', 
 
 test('process environment cannot point at another local Supabase project', async () => {
   assert.equal((await inspectFixture(fixture(), {}, { env: { VITE_SUPABASE_URL: 'http://localhost:9999' } })).ok, false);
+});
+
+test('verified reuse preserves configuration and records only the verified database identity', async () => {
+  const f = fixture(); const calls = [];
+  f.write('.env.local', 'synthetic browser configuration');
+  f.write('supabase/functions/.env', 'synthetic HMAC configuration');
+  const state = { root: f.root, hasStack: true, markerMatches: true, dbId: 'a'.repeat(64), cliInstalled: true, publicEnvExists: true, edgeEnvExists: true };
+  await runBootstrap({ root: f.root, env: {}, reuse: true, skipInstall: true, inspect: async () => ({ ok: true, checks: [], state }), run: (command, args) => { calls.push(args); return ok(); }, log: () => {}, lock: () => acquireBootstrapLock(f.root) });
+  assert.ok(!calls.flat().some((arg) => arg === 'reset' || arg.includes('write-local')));
+  assert.equal(readFileSync(join(f.root, '.env.local'), 'utf8'), 'synthetic browser configuration');
+  assert.equal(readFileSync(join(f.root, 'supabase/functions/.env'), 'utf8'), 'synthetic HMAC configuration');
+  assert.equal(JSON.parse(readFileSync(join(f.root, '.cache/local-bootstrap.json'), 'utf8')).databaseContainerId, state.dbId);
 });

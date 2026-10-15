@@ -1,6 +1,7 @@
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+import { arch, tmpdir } from 'node:os';
+import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import net from 'node:net';
 
@@ -77,6 +78,7 @@ export const environmentProblems = (values) => {
   }
   if (values.SUPABASE_URL && !isLoopbackUrl(values.SUPABASE_URL)) problems.push('remote-url');
   if (values.SUPABASE_PROJECT_REF || values.SUPABASE_PROJECT_ID) problems.push('project-override');
+  if (values.SUPABASE_CLI_BINARY_OVERRIDE) problems.push('binary-override');
   if (values.PROJECT_S_ENVIRONMENT && values.PROJECT_S_ENVIRONMENT !== 'development') problems.push('production-mode');
   if (values.PROJECT_S_CHALLENGE_PROVIDER && values.PROJECT_S_CHALLENGE_PROVIDER !== 'development') problems.push('challenge-mode');
   if (values.PROJECT_S_TRUST_PROXY_HEADERS && values.PROJECT_S_TRUST_PROXY_HEADERS !== 'false') problems.push('proxy-mode');
@@ -144,9 +146,20 @@ export async function collectDoctor({ root = process.cwd(), env = process.env, r
   const npm = npmInvocation(env);
   const npmVersion = npm ? invoke(npm[0], [...npm[1], '--version']) : { status: 1 };
   add('npm', success(npmVersion) && minimum(npmVersion.stdout, [10, 9, 0]) ? 'PASS' : 'FAIL', 'npm minimum: 10.9.0.', 'Run via npm run doctor using the project Node installation.');
-  const cliInstalled = existsSync(resolve(root, cliFile));
-  const cli = cliInstalled ? invoke(process.execPath, [resolve(root, cliFile), '--version']) : { status: 1 };
-  add('supabase', cliInstalled && success(cli) ? 'PASS' : 'WARN', cliInstalled && success(cli) ? 'Repository Supabase CLI is available.' : 'Repository Supabase CLI is not ready.', 'Run npm ci, or use the default bootstrap which installs dependencies.');
+  // Even `supabase --version` writes an update-check cache in the checkout.
+  // Inspect the locked CLI wrapper and native package without invoking it.
+  let cliInstalled = false;
+  if (existsSync(resolve(root, cliFile))) {
+    const require = createRequire(resolve(root, 'package.json'));
+    const platform = { win32: 'windows', darwin: 'darwin', linux: 'linux' }[process.platform];
+    for (const suffix of platform === 'linux' ? ['', '-musl'] : ['']) {
+      try {
+        const pkg = require.resolve(`@supabase/cli-${platform}-${arch()}${suffix}/package.json`);
+        if (existsSync(resolve(dirname(pkg), 'bin', process.platform === 'win32' ? 'supabase.exe' : 'supabase'))) cliInstalled = true;
+      } catch { /* Missing optional binary: bootstrap installs the lockfile. */ }
+    }
+  }
+  add('supabase', cliInstalled ? 'PASS' : 'WARN', cliInstalled ? 'Repository Supabase CLI and native binary are installed.' : 'Repository Supabase CLI is not ready.', 'Run npm ci, or use the default bootstrap which installs dependencies.');
 
   let containers = [];
   let dbId;
@@ -190,7 +203,7 @@ export async function collectDoctor({ root = process.cwd(), env = process.env, r
   const markerMatches = Boolean(dbId && marker?.databaseContainerId === dbId && marker?.root === root && marker?.projectId === projectId);
   add('stack', containers.length ? 'WARN' : 'PASS', containers.length ? 'An existing disposable-project stack was found.' : 'No existing disposable-project containers found.', 'Default bootstrap refuses existing data. --reuse requires this checkout\'s verified bootstrap marker.');
   return { version: 1, ok: !checks.some((check) => check.status === 'FAIL'), checks,
-    state: { root, hasStack: containers.length > 0, markerMatches, dbId, cliInstalled: cliInstalled && success(cli), publicEnvExists, edgeEnvExists, dockerReady } };
+    state: { root, hasStack: containers.length > 0, markerMatches, dbId, cliInstalled, publicEnvExists, edgeEnvExists, dockerReady } };
 }
 
 export const reportDoctor = (result, log = console.log) => {
