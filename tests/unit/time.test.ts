@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   addDaysToDateKey,
@@ -11,6 +11,7 @@ import {
   getBrowserTimeZone,
   getDateKeyInTimeZone,
   listSupportedTimeZones,
+  resolveIanaTimeZone,
 } from "@/lib/time";
 import type {
   IanaTimeZone,
@@ -18,7 +19,23 @@ import type {
   LocalDate,
 } from "@/types/publicBooking";
 
+afterEach(() => vi.unstubAllGlobals());
+
 describe("timezone-safe display helpers", () => {
+  it.each([null, undefined, 'Not/A_TimeZone'])(
+    'uses UTC when a timezone is missing or unsupported (%s)',
+    (value) => expect(resolveIanaTimeZone(value)).toBe('UTC'),
+  );
+
+  it('retains UTC and the browser zone without timezone enumeration support', () => {
+    const browserZone = getBrowserTimeZone();
+    vi.stubGlobal('Intl', { DateTimeFormat: Intl.DateTimeFormat });
+    const zones = listSupportedTimeZones();
+    expect(zones).toContain('UTC');
+    expect(zones).toContain(browserZone);
+    expect(zones).toHaveLength(browserZone === 'UTC' ? 1 : 2);
+  });
+
   it("derives date keys in the requested timezone", () => {
     const instant = "2026-01-01T02:30:00Z" as IsoInstant;
 

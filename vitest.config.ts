@@ -27,6 +27,7 @@ export default defineConfig({
         "src/types/publicBooking.ts",
       ],
       thresholds: {
+        perFile: true,
         branches: 90,
         functions: 95,
         lines: 95,
