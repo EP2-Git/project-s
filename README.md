@@ -137,14 +137,17 @@ Prerequisites: Node.js 22.12 or newer, npm 10.9 or newer, Docker Desktop (or a c
 ```sh
 git clone https://github.com/EP2-Git/project-s.git
 cd project-s
-npm ci
-npm run db:start
-npm run db:reset
-npm run db:env
+npm run bootstrap
 npm run dev
 ```
 
-Open `http://127.0.0.1:8080`. `db:env` writes only the local public API URL and local publishable key to the ignored `.env.local` file. It never writes a service-role credential.
+Open `http://127.0.0.1:8080`. Bootstrap installs locked dependencies, builds the
+shared packages, creates and resets a fresh disposable local stack, and writes
+ignored local configuration. It refuses existing stack data by default.
+`npm run doctor` checks prerequisites without changing the stack or configuration.
+See [local development](docs/local-development.md) for safe reuse, refusals, and
+the manual commands. The browser receives only the local public API URL and
+publishable key, never a service-role credential.
 
 The default deployment audience is `self-hosted`, so `/` enters login or the
 authenticated dashboard rather than showing Project S's hosted marketing site.

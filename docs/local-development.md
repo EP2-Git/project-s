@@ -1,54 +1,117 @@
-# Local development
+# Local bootstrap and doctor
 
-## Prerequisites
+Use a fresh, unlinked clone with Git, Node.js 22.12+ (see `.nvmrc`), npm 10.9+,
+and a running local Docker engine. Docker Desktop is suitable on Windows and
+macOS. No hosted Supabase project, access token, or production credentials are
+needed. The Supabase CLI comes from the repository lockfile.
 
-- Git
-- Node.js 22.12 or newer (`.nvmrc` records the project version)
-- npm 10.9 or newer
-- Docker Desktop or a compatible running Docker engine
+From the repository root:
 
-The Supabase CLI is a pinned dev dependency; no global installation is required.
+```sh
+npm run bootstrap
+npm run dev
+```
 
-## Bootstrap
+Bootstrap checks prerequisites, installs with `npm ci`, builds shared packages,
+generates development-only Edge configuration, starts Supabase, resets the
+**newly created disposable local database** with `db reset --local`, waits for
+readiness, and generates `.env.local`. Open `http://127.0.0.1:8080` after starting
+the app. Bootstrap itself does not start the browser server, provision a hosted
+project, or choose a production challenge/provider configuration.
+
+The ignored Edge environment contains a newly generated local HMAC secret. The
+ignored browser environment contains only the local API URL and public key.
+Child command output is withheld by bootstrap because Supabase diagnostics can
+include credentials. It reports each step and stops on the first failure.
+
+## Inspect without changing anything
+
+```sh
+npm run doctor
+npm run --silent doctor -- --json
+```
+
+Doctor exits nonzero on a failed check. Its versioned JSON report contains
+status, a short explanation, and remediation; it never prints environment
+values, Docker endpoints, container identities, or repository-origin URLs.
+Warnings allow a fresh checkout to lack dependencies and generated environment.
+Doctor reads configuration, inspects local Docker metadata, and briefly binds
+loopback ports to test availability. It never installs, writes files, starts or
+stops containers, links projects, or resets data.
+
+It checks the repository root/origin, disposable project ID, hosted link markers,
+Node/npm, repository Supabase CLI, local Docker context/daemon, configured ports,
+and local-only development environment. Fork origins are a warning to inspect.
+Remote/TCP Docker contexts, hosted URLs, privileged browser credentials,
+production/challenge overrides, and a different local Supabase API port fail.
+Docker must use a local Unix socket or Windows named pipe.
+
+## Existing data and retries
+
+Default bootstrap refuses any existing `project-s-local` containers or retained
+data volumes, including a stopped or partially created stack. Removing a
+container does not imply its database volume is disposable. Bootstrap never
+removes containers or volumes.
+After a successful bootstrap in this checkout, use:
+
+```sh
+npm run bootstrap -- --reuse
+```
+
+Reuse requires the ignored `.cache/local-bootstrap.json` marker to match this
+checkout and the current database container, plus both generated environment
+files. It builds packages and starts/waits for the same stack, preserving its
+database and environment, including the HMAC secret. It never resets or rewrites
+configuration. A recreated container, another checkout, an old manual stack, or
+missing configuration fails this check. Do not fabricate or copy the marker.
+
+All bootstraps share an exclusive `project-s-local-bootstrap.lock` in the system
+temporary directory because checkouts share the same local project ID. The lock
+is released on success or ordinary failure. If interrupted forcibly, inspect
+local processes before removing a stale lock. Do not run manual stack-changing
+commands concurrently with bootstrap.
+
+If setup stops, run doctor and inspect the failed step with the corresponding
+manual command below. Review terminal output locally; do not paste secrets into
+issues. A partial stack is intentionally preserved for diagnosis. Do not reset
+or stop an existing stack until you have decided its local data is disposable.
+Use a separate environment if it contains data you need to retain.
+
+| Refusal | Next action |
+| --- | --- |
+| Node/npm missing or too old | Select the Node version in `.nvmrc`; rerun doctor. |
+| Docker unavailable | Start the local engine and wait for readiness. |
+| Remote Docker context | Select a local socket/named-pipe context. |
+| Port occupied | Identify the local service; stop it only if appropriate. Doctor never stops it. |
+| Hosted link or unsafe environment | Preserve that checkout and use a fresh unlinked clone with local configuration. |
+| Existing stack without a matching marker | Use the manual workflow after reviewing data ownership; bootstrap will not adopt/reset it. |
+| Supabase CLI not ready | Run `npm ci`; inspect its installation error locally. |
+
+## Manual workflow and CI
+
+These commands remain available for deliberate local maintenance. In particular,
+`db:reset` is destructive to the local database and `db:edge-env` replaces the
+local HMAC secret; they do not inherit bootstrap's existing-data refusal.
 
 ```sh
 npm ci
 npm run build:packages
+npm run db:edge-env
 npm run db:start
 npm run db:reset
 npm run db:env
 npm run dev
 ```
 
-Keep this order: install, build the shared contracts/application/SDK packages,
-start Supabase, reset and seed the database, derive the browser environment, then
-start Vite. The `db:start`, `db:reset`, and `dev` scripts each rebuild the shared
-packages defensively because the Edge Function imports their compiled output.
-
-`db:start` writes an ignored `supabase/functions/.env` with an explicit
-`PROJECT_S_ENVIRONMENT=development` flag and random local HMAC secret, then
-downloads/starts the local Supabase containers and Edge runtime.
-`db:reset` rebuilds from migrations and applies `supabase/seed.sql`. `db:env`
-reads the local CLI status and writes only `VITE_SUPABASE_URL` and
-`VITE_SUPABASE_PUBLISHABLE_KEY` to ignored `.env.local`.
-
-Local development therefore uses the safe `self-hosted` audience by default:
-opening `/` enters the authenticated application or login flow. To review the
-isolated hosted marketing concepts, set the audience only for that local Vite
-process:
-
-```powershell
-$env:VITE_PROJECT_S_DEPLOYMENT_AUDIENCE = "hosted"
-npm run dev
-```
-
-```sh
-VITE_PROJECT_S_DEPLOYMENT_AUDIENCE=hosted npm run dev
-```
-
-The review routes remain noindex and do not claim a live `/` route.
-
-Never copy a production key into local configuration. The browser does not require a service-role key.
+`npm run bootstrap -- --skip-install` is for CI after `npm ci`; it requires the
+installed Supabase CLI. CI tests the fresh bootstrap on Ubuntu, followed by the
+database/RLS, collision and generated-type gates. A CI-only synthetic database
+probe checks default refusal and verified reuse against a sentinel row, and
+compares both generated environment files byte-for-byte. Deterministic setup/refusal
+tests run on Ubuntu, macOS and Windows with `npm run test:setup`. These tests
+do not claim a Docker-backed bootstrap or authority demo was run on all three
+operating systems; the broader [install verification](install-verification.md)
+matrix remains separate.
 
 ## Local API and confirmation flow
 

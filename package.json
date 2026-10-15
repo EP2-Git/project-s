@@ -26,6 +26,8 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "npm run build:packages && vite",
+    "doctor": "node scripts/doctor.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
     "build": "npm run build:packages && vite build",
     "build:dev": "vite build --mode development",
     "build:contracts": "npm run build --workspace @project-s/contracts",
@@ -36,7 +38,8 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run build:packages && npm run typecheck:packages && tsc -p tsconfig.app.json --noEmit --pretty false && tsc -p tsconfig.node.json --noEmit --pretty false",
     "typecheck:packages": "npm run typecheck --workspace @project-s/contracts && npm run typecheck --workspace @project-s/application && npm run typecheck --workspace @project-s/sdk",
-    "test": "npm run build:packages && vitest run && npm run test:contracts && npm run test:application && npm run test:sdk && npm run test:mcp && npm run test:parity",
+    "test": "npm run build:packages && vitest run && npm run test:contracts && npm run test:application && npm run test:sdk && npm run test:mcp && npm run test:parity && npm run test:setup",
+    "test:setup": "node --test tests/setup/*.test.mjs",
     "test:contracts": "npm run test --workspace @project-s/contracts",
     "test:application": "npm run test --workspace @project-s/application",
     "test:sdk": "npm run test --workspace @project-s/sdk",
