@@ -150,7 +150,7 @@ export async function collectDoctor({ root = process.cwd(), env = process.env, r
   // Inspect the locked CLI wrapper and native package without invoking it.
   let cliInstalled = false;
   if (existsSync(resolve(root, cliFile))) {
-    const require = createRequire(resolve(root, 'package.json'));
+    const require = createRequire(resolve(root, cliFile));
     const platform = { win32: 'windows', darwin: 'darwin', linux: 'linux' }[process.platform];
     for (const suffix of platform === 'linux' ? ['', '-musl'] : ['']) {
       try {
