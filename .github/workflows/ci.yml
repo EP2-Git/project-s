@@ -76,6 +76,8 @@ jobs:
         run: npm run test:install-smoke
       - name: Local setup failure and preservation checks
         run: npm run test:setup
+      - name: Runnable example transport and registry checks
+        run: npm run test:examples
 
   database:
     name: Reproducible database and RLS
@@ -101,6 +103,10 @@ jobs:
       - run: npm run test:db
       - run: npm run test:concurrency
       - run: npm run types:check
+      # Bootstrap generated .env.local. Keep these extra API calls on this
+      # runner so their normal rate-limit buckets cannot affect browser tests.
+      - name: Exercise runnable examples against the real local API
+        run: npm run test:examples:live
       - name: Stop local Supabase
         if: always()
         run: npm run db:stop
