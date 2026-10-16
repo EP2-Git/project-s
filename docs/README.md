@@ -31,6 +31,8 @@ local data while evaluating it.
 
 ## I want to integrate it
 
+- [Runnable HTTP, TypeScript SDK and local MCP examples](../examples/README.md) —
+  shared synthetic preparation and refused-create walkthrough.
 - [HTTP API v1](api-v1.md) — the four-operation public boundary.
 - [TypeScript SDK](../packages/sdk/README.md) — source-workspace client usage.
 - [Local stdio MCP](mcp-local-stdio.md) and

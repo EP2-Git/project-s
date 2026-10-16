@@ -159,6 +159,14 @@ The database and development scripts rebuild the workspace packages
 defensively. Vite serves the browser and proxies same-origin `/api/v1/*`
 requests to the local `api-v1` Edge Function.
 
+## Runnable transport examples
+
+After the local quick start, run `npm run examples:http`, `npm run examples:sdk`,
+or `npm run examples:mcp` in another terminal. Each uses the same fictional inputs
+to discover availability, prepare without holding a slot, and verify create is
+refused before browser authority. See the [examples guide](examples/README.md)
+for commands, expected problems and validation boundaries.
+
 ## Authority Boundary Demo
 
 After the local quick start, run the real MCP-to-browser authority demonstration:

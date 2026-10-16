@@ -8,6 +8,11 @@
 - **Local setup tests** cover prerequisite refusals, redaction, existing-data
   preservation and cross-checkout bootstrap locking without Docker. They run
   on Ubuntu, macOS and Windows; the fresh Docker bootstrap runs in Ubuntu CI.
+- **Transport examples** compile the TypeScript client and exercise the actual
+  HTTP/SDK/MCP examples against a strict mock HTTP server, including registry
+  drift, shared inputs, no-hold checks, refusal and redacted failures. These run
+  on all three OS install runners. A separate Ubuntu live-API check runs all
+  three CLIs against the seeded Edge API; mocks are not database-authority proof.
 - **MCP protocol tests** cover deterministic four-tool discovery, modern stdio
   envelopes, cancellation, schema/results, redacted text, and SDK-only transport.
 - **Golden parity tests** drive one shared four-operation vector set through the

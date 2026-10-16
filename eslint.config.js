@@ -8,6 +8,7 @@ export default tseslint.config(
   {
     ignores: [
       "coverage",
+      ".cache",
       "dist",
       "**/dist/**",
       "node_modules",
@@ -19,7 +20,7 @@ export default tseslint.config(
   },
   {
     ...js.configs.recommended,
-    files: ["scripts/**/*.mjs", "packages/**/*.mjs", "tests/setup/**/*.mjs", "*.config.js"],
+    files: ["scripts/**/*.mjs", "packages/**/*.mjs", "examples/**/*.mjs", "tests/examples/**/*.mjs", "tests/setup/**/*.mjs", "*.config.js"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.node,
