@@ -24,6 +24,7 @@ most one durable booking for the idempotency identity.
 
 [See the authority proof](#authority-boundary-proof) ·
 [Run locally](#local-quick-start) ·
+[Evaluate the current flow](docs/design-partner-evaluation.md) ·
 [Browse the docs](docs/README.md) ·
 [View the public roadmap](ROADMAP.md) ·
 [Read the architecture](docs/architecture.md) ·

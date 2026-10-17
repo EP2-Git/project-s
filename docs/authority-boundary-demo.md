@@ -13,9 +13,12 @@ browser flow before the same MCP request can commit.
 
 Prerequisites are Node.js 22.12 or newer, npm 10.9 or newer, Docker Desktop (or a
 compatible Docker engine), and a browser that the operating system can open.
-Both paths below run `db:reset` and replace data in the repository's local
-Supabase stack. Use the disposable local fixture only; neither command targets a
-linked or hosted database.
+The setup commands below and the capture command run `db:reset`, replacing data
+in the repository's local Supabase stack. The interactive `demo:authority`
+command itself does not reset data. Use the disposable local fixture only;
+neither path is for a linked or hosted database. For an existing stack, inspect
+ownership and follow [safe reuse](local-development.md#existing-data-and-retries)
+instead of resetting data you need to retain.
 
 From a clean checkout:
 

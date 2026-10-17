@@ -23,6 +23,8 @@ behavior from future direction; a roadmap item is not a shipped capability.
   and internet-facing gates.
 - [Testing](testing.md) — focused checks, database tests, browser tests, and how
   to interpret the evidence.
+- [Design-partner evaluation](design-partner-evaluation.md) — a synthetic local
+  walkthrough, expected authority outcomes, and a private feedback worksheet.
 - [Time zones](timezones.md) — the scheduling time model.
 - [Data model](data-model.md) — the current schema and ownership model.
 
