@@ -6,6 +6,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A design-partner evaluation guide and private feedback worksheet covering
+  synthetic setup, integration, browser authority, commit/replay and host
+  cancellation, with comparable timing and consent-safe reporting guidance.
 - Cross-platform clean-install smoke (`npm run test:install-smoke`) and a CI
   matrix on Ubuntu, macOS, and Windows, plus an install-verification checklist
   for full Docker-backed local runs.
