@@ -78,6 +78,8 @@ local data while evaluating it.
 
 ## Release and design context
 
+- [Authority-provider and bounded-mandate RFC](rfcs/authority-provider-bounded-mandates.md)
+  is a proposal for review, not accepted design or current delegated capability.
 - [0.1.1 repository operations evidence](repository-evidence-0.1.1-prealpha.md)
   records the public draft, taxonomy, milestones, Issues, Discussions, and
   remaining manual gates.
