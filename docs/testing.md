@@ -115,3 +115,31 @@ development-server tests cannot detect. It never authenticates or creates data.
 - publication workflow: full-history secret scan and clean-room checks.
 
 Local Docker results and hosted CI results are recorded separately; neither should be inferred when it was not run.
+
+## Pull-request dependency review
+
+Every pull request also runs `Dependency vulnerability review` from
+`.github/workflows/dependency-review.yml`, including pull requests without
+lockfile changes. The SHA-pinned GitHub-owned dependency-review action compares
+the pull request's base and head through GitHub's dependency graph. It fails on
+introduced high or critical advisories across runtime, development and unknown
+scopes, matching the full-lockfile audit threshold above. It is not configured
+to warn instead of failing or to allow individual advisories.
+
+The workflow token has only `contents: read`, checkout does not persist
+credentials, and results appear in the job logs and summary rather than PR
+comments. No package installation, build or pull-request script is executed by
+this job. Dependency review complements the existing full-lockfile and
+production npm audits and installed-package license allowlist; it does not
+replace them. The current main ruleset and existing required check names are
+unchanged. Maintainers must check this additional job before merging; adding it
+to hosted required-check settings is a separate repository-policy change.
+
+This workflow does not enable CodeQL. The remaining CodeQL portion of
+[issue #11](https://github.com/EP2-Git/project-s/issues/11) needs a decision on
+reporting: GitHub's standard CodeQL upload requires `security-events: write`,
+while the issue requires read-only workflow tokens. An artifact-only analysis
+can preserve read-only tokens, but would need its own findings gate and would
+not populate code-scanning alerts. Do not add write permissions or treat the
+dependency review as static analysis. CodeQL language coverage and any
+generated-code exclusions must be documented when that work is implemented.
