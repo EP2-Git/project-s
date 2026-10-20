@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Security
+
+- Updated Vite from 8.2.1 to the patched 8.2.4 release to address the bundled
+  launch-editor advisories without changing application code or audit policy.
+
 ### Added
 
 - A design-partner evaluation guide and private feedback worksheet covering
