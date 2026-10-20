@@ -1,6 +1,6 @@
 # RFC supplement: bounded-mandate implementation contract
 
-- Status: **Proposed; requires explicit implementation-design review**
+- Status: **C1-C4 accepted for implementation; proof and enablement gated**
 - Date: 2026-10-20
 - Owner: Ethan Patten, lead maintainer
 - Foundation: [ADR 0003](../adr/0003-authority-provider-bounded-mandates.md),
@@ -11,7 +11,10 @@
 
 D1-D5 are accepted and are not being reopened. This supplement supplies the
 credential, wire, lifetime, storage and transaction choices deliberately absent
-from the foundation. Everything below is a recommendation until reviewed.
+from the foundation. Ethan accepted C1-C4 on 2026-10-20 against recommendation
+revision `5e162afa0facf59c0c4a13eb0e242b6c42cc3cd7`; see
+[ADR 0004](../adr/0004-bounded-mandate-implementation.md). The technical proposal
+below is retained as reviewed; implementation and SQL correctness remain unproven.
 No type, endpoint, RPC, migration, credential or delegated write exists because
 it is named here. Green existing-software CI cannot approve these choices.
 
@@ -26,9 +29,10 @@ Recommend the following packet for the first **synthetic local** vertical slice:
 | C3. Synthetic retention | Seven-day credentials/reviewed profiles, ten-minute preparations, five-minute review/step-up records, 24-hour committed-receipt access, seven-day minimal audit, and expiry-based tombstone cleanup as specified below. Non-synthetic enablement requires its own operator-reviewed retention configuration. | Bounded replay and private diagnostic history rather than indefinite receipt access. These are proposed test-instance policy values, not legal retention guidance or public-service defaults. |
 | C4. Kernel isolation and contention | Serialize v2 authority changes per issuing principal; keep v2 rows separate from v1; use nonblocking acquisition at shared legacy row/owner boundaries, revalidate time after locks, and return a bounded retry on contention. | Trades throughput for a small inspectable first slice. No claim of a completed lock proof: SQL, FK/trigger effects and explicit wait/race tests remain release gates. |
 
-Acceptance must identify the reviewed commit and any revisions to C1-C4. It
-permits implementation with delegated writes disabled, not production deployment
-or automatic enablement. Keep the review PR draft until this decision exists.
+Acceptance is recorded in ADR 0004 against the reviewed commit with no requested
+C1-C4 revisions. It permits implementation with delegated writes disabled, not
+production deployment or automatic enablement. The recommendation-review gate is
+resolved; full pipeline and implementation/enablement gates remain binding.
 
 ## Identity, audience and control authority
 
@@ -418,7 +422,7 @@ synthetic data. No production backup/infrastructure action is authorized here.
    host policy is not an authorized host agent. No release/deployment/customer
    data, calendar/notifications or guest cancellation/rescheduling is added.
 
-If this proposal changes during review, revise it before implementing those
-semantics. If its blocker remains unchanged on another scheduled run, inspect
-once, keep the draft, record what review is needed and advance another accepted
-product unit; do not endlessly rewrite this packet or treat green CI as approval.
+If implementation needs a material change to accepted semantics, record and
+review that change before implementing it. Reconcile remaining blockers once on
+each run and advance eligible work; do not repeatedly request C1-C4 approval,
+rewrite this packet without new evidence or treat green CI as proof of delegation.

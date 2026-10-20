@@ -42,10 +42,12 @@ in `0.1.x`. Track the decision boundary in the
 [0.2.0 milestone](https://github.com/EP2-Git/project-s/milestone/3).
 
 The foundational direction and D1-D5 were accepted on 2026-10-19 in
-[ADR 0003](docs/adr/0003-authority-provider-bounded-mandates.md). The next unit
-specifies and reviews the concrete credential lifecycle, authenticated
-contracts, retention matrix and complete lock plan before new delegated paths
-are implemented. Acceptance does not make delegation available.
+[ADR 0003](docs/adr/0003-authority-provider-bounded-mandates.md). C1-C4 implementation
+recommendations were accepted on 2026-10-20 in
+[ADR 0004](docs/adr/0004-bounded-mandate-implementation.md). Next, implement the
+bounded synthetic slice with delegated writes disabled and prove the concrete
+contracts, credential lifecycle, retention and real SQL lock/race behavior.
+Acceptance does not make delegation available or waive full-pipeline gates.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 

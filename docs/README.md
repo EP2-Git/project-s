@@ -83,8 +83,9 @@ local data while evaluating it.
   [ADR 0003](adr/0003-authority-provider-bounded-mandates.md). Concrete
   implementation contracts remain gated; delegation is not a current capability.
 - [Bounded-mandate implementation supplement](rfcs/bounded-mandate-implementation.md)
-  proposes the concrete credential, v2 contract, step-up, lock and synthetic
-  retention choices for review. It does not enable delegation or reopen D1-D5.
+  specifies the credential, v2 contract, step-up, lock and synthetic retention
+  choices. C1-C4 are accepted in [ADR 0004](adr/0004-bounded-mandate-implementation.md);
+  implementation/proof and enablement remain gated. It does not reopen D1-D5.
 - [0.1.1 repository operations evidence](repository-evidence-0.1.1-prealpha.md)
   records the public draft, taxonomy, milestones, Issues, Discussions, and
   remaining manual gates.
