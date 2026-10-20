@@ -78,6 +78,10 @@ local data while evaluating it.
 
 ## Release and design context
 
+- [Authority-provider and bounded-mandate RFC](rfcs/authority-provider-bounded-mandates.md)
+  records the foundation and D1-D5 accepted in
+  [ADR 0003](adr/0003-authority-provider-bounded-mandates.md). Concrete
+  implementation contracts remain gated; delegation is not a current capability.
 - [0.1.1 repository operations evidence](repository-evidence-0.1.1-prealpha.md)
   records the public draft, taxonomy, milestones, Issues, Discussions, and
   remaining manual gates.
