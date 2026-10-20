@@ -1,19 +1,25 @@
 # RFC: Authority providers and bounded mandates
 
-- Status: **Proposed for public review; not accepted or implemented**
+- Status: **Foundational direction and D1-D5 accepted; not implemented**
 - Date: 2026-10-18
+- Maintainer decision: 2026-10-19; [ADR 0003](../adr/0003-authority-provider-bounded-mandates.md)
 - Decision owner: Ethan Patten, lead maintainer
 - Tracking issue: [#16](https://github.com/EP2-Git/project-s/issues/16)
-- Scope: proposed Core 0.2 authority foundation
+- Scope: Core 0.2 authority foundation, subject to the implementation gates below
 - Supersedes: none; [ADR 0001](../adr/0001-agent-native-public-booking-boundary.md)
   remains the current contract
 
-This RFC requests a design decision, not permission to ship delegation. A green
-pipeline checks the proposal branch's existing software; it cannot approve this
-design or prove an unimplemented mandate model. Keep the proposal PR open until
-explicit maintainer review. Do not close #16, create an accepted ADR, implement
-the proposal, or unblock [#17](https://github.com/EP2-Git/project-s/issues/17) and
-[#18](https://github.com/EP2-Git/project-s/issues/18) merely because it is written.
+Ethan reviewed PR #41 and explicitly approved its recommended path on
+2026-10-19, against RFC revision `543e38a61c07f77f8454af0355222bf2ac00c177`.
+[ADR 0003](../adr/0003-authority-provider-bounded-mandates.md) records the accepted
+foundation and D1-D5. This decision comes from maintainer review, not green CI.
+It permits the next implementation-design work; it does not supply the concrete
+credential lifecycle, retention matrix, authenticated wire contracts or complete
+SQL lock plan that this RFC deliberately leaves for review. Delegated writes
+remain unavailable. The proof obligations for
+[#17](https://github.com/EP2-Git/project-s/issues/17) and the separate bilateral
+epic [#18](https://github.com/EP2-Git/project-s/issues/18) are not completed by this
+acceptance or by tests of the current v1 software.
 
 ## Decision brief
 
@@ -29,21 +35,21 @@ Published host availability remains the host's existing invitation policy; it
 is not an independently authorized host agent. Full bilateral proof remains
 the separate, blocked #18 epic.
 
-Ethan's review must resolve these decisions before implementation:
+The following recommended decisions were accepted by Ethan on 2026-10-19:
 
-| Decision | Recommendation for review | Alternative / consequence |
+| Decision | Accepted recommendation | Alternative / consequence |
 | --- | --- | --- |
 | D1. First slice | Guest-side bounded mandate against an already-public host meeting type; at most one successful commit per mandate. | Keep per-booking only, or require independently issued mandates on both sides first; the latter expands the initial identity and policy scope. |
 | D2. Identity and issuer | Authenticated local principal explicitly issues to one independently revocable, registered agent credential. Verify the credential-to-principal mapping server-side. | External identity/portable credentials require a separate trust and revocation design; do not derive identity from guest email, an MCP client name or a request header. |
-| D3. Scope and lifetime | One exact host and meeting type, a fixed UTC meeting window, maximum duration, mandatory finite permission expiry, and one commit. Recommend an initial 24-hour permission-lifetime ceiling, subject to review. | Broader scopes, recurring wall-clock rules, multiple uses or a different ceiling need explicit semantics and tests; no unlimited default. |
-| D4. Step-up and replay | Out-of-scope requests need a new, exact approval from the relevant verified principal. Mandate revocation prevents new writes; an authenticated original actor may still resolve its own eligible committed retry. | Revocation could also deny receipt access; select that behavior before defining the new public contract. Existing anonymous v1 approval cannot prove a delegated principal's identity. |
+| D3. Scope and lifetime | One exact host and meeting type, a fixed UTC meeting window, maximum duration, mandatory finite permission expiry, and one commit. The initial permission-lifetime ceiling is 24 hours. | Broader scopes, recurring wall-clock rules, multiple uses or a different ceiling need explicit semantics and tests; no unlimited default. |
+| D4. Step-up and replay | Out-of-scope requests need a new, exact approval from the relevant verified principal. Mandate revocation prevents new writes; an authenticated original actor may still resolve its own eligible committed retry. | Denying receipt access on mandate revocation was the alternative, not the selected path; credential revocation still denies it. Existing anonymous v1 approval cannot prove a delegated principal's identity. |
 | D5. Enabling the new boundary | Separate versioned authenticated contract/context and additive database changes; preserve v1 unchanged and disabled-by-default delegation. | A deliberate breaking replacement needs its own migration decision; adding optional authority fields to strict v1 is incompatible. |
 
-These recommendations are not accepted defaults. Record acceptance or revisions
-against the exact reviewed revision, including D1-D5, identity/credential
-lifecycle, retention/deletion policy and rollout gates. Only then produce the
-ADR and scope the implementation. No identity adapter, retention duration or
-wire schema should be improvised while implementing this proposal.
+These accepted decisions constrain the next design and implementation; they do
+not fill in missing specifications. Before implementing new delegated paths,
+review the identity/credential lifecycle, retention/deletion matrix, strict
+authenticated contracts and complete lock plan required below. No identity
+adapter, retention duration or wire schema is implied by acceptance of D1-D5.
 
 ## Current behavior and constraint
 
@@ -130,7 +136,7 @@ Minimum conceptual fields and constraints:
 | Resource and action | Exact resolved host and active meeting type; booking creation only. No wildcard owners, cancellation, rescheduling, schedule editing or re-delegation. Guest fields cannot impersonate another issuing principal. |
 | Guest intent binding | Reference a principal-owned, explicitly reviewed booker-profile revision rather than accepting arbitrary agent-selected guest details. Initial delegated notes are empty. This binding does not prove email ownership; changed profile data requires a newly reviewed policy and preparation. |
 | Meeting bounds | Explicit UTC interval within which the whole derived meeting must fit; maximum derived duration. Existing host rules further restrict the result. No recurring/DST mandate language in the first slice. |
-| Permission bounds | Finite not-before and expiry instants, separate from the allowed meeting interval. Valid at `notBefore <= lockTime < expiresAt`; the proposed 24-hour lifetime ceiling still requires D3 approval. |
+| Permission bounds | Finite not-before and expiry instants, separate from the allowed meeting interval. Valid at `notBefore <= lockTime < expiresAt`; D3 accepts an initial 24-hour lifetime ceiling. |
 | Usage | One successful first commit. Preparations, refused attempts and exact retries do not consume it; distinct requests cannot multiply its budget. |
 | Revision/state | Immutable issued policy at a revision, active/revoked/exhausted state, timestamps and private audit linkage. Changing scope requires a newly reviewed policy/revision; it never silently widens an existing preparation. |
 
@@ -183,10 +189,10 @@ Separate **first write** from **eligible committed retry**:
 - An exact retry must not create a second booking, consume another mandate use
   or append another successful commit event. All transports share the same
   authority/idempotency domain and concurrent-request behavior.
-- D4 recommends that revocation/expiry of the mandate cannot erase an already
+- Accepted D4 requires that revocation/expiry of the mandate cannot erase an already
   committed result. Receipt access still requires the original verified caller
   binding and an active credential; revoking authentication itself denies that
-  access. This is a proposed read policy, not a permission to retry new writes.
+  access. This is a receipt-access policy, not permission to retry new writes.
   Authenticate first, then let the kernel distinguish a bound committed retry
   from a first write before applying first-write mandate expiry/usage checks.
   An exhausted/revoked-mandate preflight cannot replace that distinction or
@@ -282,10 +288,12 @@ version must define its contract, context and HTTP/SDK/MCP parity explicitly;
 do not label new semantics an optional v1 field. Existing v1 clients retain the
 same per-booking requirement and four-tool discovery.
 
-Proposed rollout after design acceptance:
+Rollout under the accepted foundation (not yet implemented):
 
-1. Record the accepted ADR and exact decisions, issuer/credential lifecycle,
-   privacy matrix and strict public/internal contracts; document alternatives.
+1. Record the accepted ADR and exact decisions. Complete and review the
+   issuer/credential lifecycle, privacy matrix, strict public/internal contracts
+   and SQL lock plan before implementing new delegated paths. ADR 0003 records
+   which decisions are accepted and which specifications remain outstanding.
 2. Add forward migrations, role/grant tests, generated types and a compatible
    verifier with delegated writes disabled. Do not infer feature availability
    from the presence of tables or type names.
@@ -331,8 +339,10 @@ proposal is production-ready. No expiry limit substitutes for revocation tests.
 
 ## Evidence required after acceptance
 
-The following are planned proof obligations, not implemented tests or completed
-results. Start #17 only after this design is accepted; preserve failing seeds.
+The following remain planned proof obligations, not implemented tests or
+completed results. The foundation is accepted; define the concrete reviewed
+model before implementing #17's generators and preserve failing seeds. Do not
+invent mandate behavior from the test issue.
 
 | Boundary | Required observation |
 | --- | --- |
