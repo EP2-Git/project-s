@@ -20,6 +20,7 @@ const About = buildIncludesHostedWebsite ? lazy(() => import("./pages/About")) :
 const BookingConfirmationPage = lazy(() => import("./pages/BookingConfirmationPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const Demo = lazy(() => import("./pages/Demo"));
+const AuthorityLab = lazy(() => import("./pages/AuthorityLab"));
 const EmailVerification = lazy(() => import("./pages/EmailVerification"));
 const Features = buildIncludesHostedWebsite ? lazy(() => import("./pages/Features")) : NotFound;
 const Login = lazy(() => import("./pages/Login"));
@@ -118,6 +119,7 @@ export const ApplicationRoutes = ({
     <Route path="/signup" element={<Signup />} />
     <Route path="/email-verification" element={<EmailVerification />} />
     <Route path="/demo" element={<Demo />} />
+    <Route path="/demo/mandates" element={<AuthorityLab />} />
     <Route
       path="/features"
       element={<HostedOnlyRoute audience={audience}><Features /></HostedOnlyRoute>}
