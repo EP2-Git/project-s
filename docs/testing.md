@@ -4,6 +4,10 @@
 
 - **Contract/application/SDK suites** cover strict DTOs, operation metadata,
   authorization/scope enforcement, abuse checks, and HTTP normalization.
+- **V2 contract foundation tests** cover strict mandate/booking DTOs, lossless
+  microsecond normalization/order, local policy bounds, actor response privacy,
+  separate artifacts/package export and unchanged v1 discovery/digest. These
+  parsers do not prove live v2 identity, ownership, SQL or transport parity.
 - **Vitest** covers pure scheduling/time rules, validation, browser services, and repository security tooling.
 - **Local setup tests** cover prerequisite refusals, redaction, existing-data
   preservation and cross-checkout bootstrap locking without Docker. They run

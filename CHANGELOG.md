@@ -11,6 +11,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A separate v2 mandate/booking contract foundation with strict request and
+  privacy-minimal response schemas, lossless microsecond normalization and its
+  own artifact pin. Public v1 is unchanged; no delegated routes are enabled.
 - An interactive Authority Lab with synthetic permission limits, exact human
   approval, expiry/revocation/replay controls and a readable activity trail.
   It creates no real bookings or credentials and does not enable delegation.

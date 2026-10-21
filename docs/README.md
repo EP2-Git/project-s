@@ -38,6 +38,8 @@ local data while evaluating it.
 - [Runnable HTTP, TypeScript SDK and local MCP examples](../examples/README.md) —
   shared synthetic preparation and refused-create walkthrough.
 - [HTTP API v1](api-v1.md) — the four-operation public boundary.
+- [V2 contract foundation](../packages/contracts/README.md#v2-mandate-and-booking-schema-foundation)
+  — strict mandate/booking schemas under implementation; no callable v2 API.
 - [TypeScript SDK](../packages/sdk/README.md) — source-workspace client usage.
 - [Local stdio MCP](mcp-local-stdio.md) and
   [tool manifest](mcp-tool-manifest.md) — the client-launched MCP adapter.
