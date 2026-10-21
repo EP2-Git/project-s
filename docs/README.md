@@ -10,6 +10,8 @@ behavior from future direction; a roadmap item is not a shipped capability.
   long-term direction and the language the current implementation can support.
 - [Authority Boundary Demo](authority-boundary-demo.md) — the joined MCP,
   browser, PostgreSQL, replay, and authenticated-host proof.
+- [Authority Lab](authority-lab.md) — an interactive, browser-only simulation of
+  limits, exact approval and agent activity; it creates no real booking.
 - [Architecture](architecture.md) — components, trust boundaries, and data flow.
 - [Feature status](feature-status.md) — what is included, excluded, or planned.
 - [Scheduling engine](scheduling-engine.md) — deterministic time and conflict

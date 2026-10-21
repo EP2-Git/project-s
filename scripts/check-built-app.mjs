@@ -32,13 +32,14 @@ try {
         ['/login', 'Welcome back'],
         ['/signup', 'Create your account'],
         ['/demo', 'Authority Boundary Demo'],
+        ['/demo/mandates', 'Authority Lab'],
         ['/booking/confirm', 'Review a prepared booking'],
       ]) {
         await page.goto(`http://127.0.0.1:4193${route}`);
         await page.getByRole('heading', { name: heading, exact: true }).waitFor();
         assert.deepEqual(errors, [], `${name} ${route}: production module errors`);
       }
-      console.log(`${name}: production login, signup, demo and confirmation render without module errors.`);
+      console.log(`${name}: production login, signup, demo, Authority Lab and confirmation render without module errors.`);
     } finally {
       await browser.close();
     }

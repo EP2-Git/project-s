@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Bot,
   CheckCircle2,
@@ -16,6 +17,7 @@ import DeploymentFooter from '@/components/deployment/DeploymentFooter';
 import Container from '@/components/ui/container';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface DemoStep {
   title: string;
@@ -86,6 +88,22 @@ const Demo = () => {
             <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg">
               A deterministic MCP client can use Project S’s scheduling contracts, but it does not silently gain more authority than a person. The client may discover and prepare; a person must review and approve; the database remains the final authority. This demonstration does not run a model.
             </p>
+          </section>
+
+          <section aria-labelledby="authority-lab-title" className="mx-auto max-w-5xl pb-12">
+            <div className="rounded-xl border bg-card p-6 sm:flex sm:items-center sm:justify-between sm:gap-8">
+              <div>
+                <Badge variant="outline">Interactive simulation</Badge>
+                <h2 id="authority-lab-title" className="mt-3 text-2xl font-semibold">Explore the human-agent partnership</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Set booking limits, inspect requests and try approval, expiry, revocation and replay in the Authority Lab.
+                  This separate browser-only simulation creates no real booking or agent credential.
+                </p>
+              </div>
+              <Button asChild className="mt-5 shrink-0 sm:mt-0">
+                <Link to="/demo/mandates">Open Authority Lab</Link>
+              </Button>
+            </div>
           </section>
 
           <section aria-labelledby="run-demo-title" className="mx-auto max-w-5xl pb-12">

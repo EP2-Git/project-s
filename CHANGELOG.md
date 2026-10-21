@@ -11,6 +11,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- An interactive Authority Lab with synthetic permission limits, exact human
+  approval, expiry/revocation/replay controls and a readable activity trail.
+  It creates no real bookings or credentials and does not enable delegation.
 - A design-partner evaluation guide and private feedback worksheet covering
   synthetic setup, integration, browser authority, commit/replay and host
   cancellation, with comparable timing and consent-safe reporting guidance.
