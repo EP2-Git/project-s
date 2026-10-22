@@ -11,6 +11,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Strict v2 issuer-control inputs/terminal responses, server-only caller contexts
+  and step-up/refusal envelopes. Parsing cannot establish live authority; public
+  v1 and the app remain unchanged, and delegated writes stay unavailable.
 - A separate v2 mandate/booking contract foundation with strict request and
   privacy-minimal response schemas, lossless microsecond normalization and its
   own artifact pin. Public v1 is unchanged; no delegated routes are enabled.

@@ -10,6 +10,7 @@ import {
 import {
   PROJECT_S_V2_CONTRACT_MEDIA_TYPE,
   PROJECT_S_V2_CONTRACT_VERSION,
+  PROJECT_S_V2_PROBLEM_MEDIA_TYPE,
   generateV2ContractArtifacts,
   generateV2JsonSchemaBundle,
 } from '../src/v2/index.js';
@@ -33,11 +34,12 @@ describe('isolated v2 contract artifacts, not operation discovery', () => {
     expect(artifacts.jsonSchemaBundle['x-project-s-status']).toBe('foundation-only-unavailable');
     expect(PROJECT_S_V2_CONTRACT_VERSION).toBe(2);
     expect(PROJECT_S_V2_CONTRACT_MEDIA_TYPE).toBe('application/vnd.project-s.v2+json');
+    expect(PROJECT_S_V2_PROBLEM_MEDIA_TYPE).toBe('application/problem+json');
     expect(artifacts.jsonSchemaBundle.$defs.ContractVersion).toMatchObject({ const: 2 });
-    expect(Object.keys(artifacts.jsonSchemaBundle.$defs)).toHaveLength(20);
+    expect(Object.keys(artifacts.jsonSchemaBundle.$defs)).toHaveLength(48);
     expect(JSON.parse(stableStringify(artifacts))).toEqual(artifacts);
     // Pin this separate reviewed surface without changing the existing v1 pin.
-    expect(digest(artifacts)).toBe('13278ce9f489fe39173a0b65ab4c0ea1dec36c04a4cafd56459f37f4e8f450c6');
+    expect(digest(artifacts)).toBe('66977092b59068359dce6eb48fbf2c226f3f6f8a78ab1c6587ef39499e8fa813');
   });
 
   it('keeps every nested object strict and exposes the additional runtime requirements', () => {
@@ -61,6 +63,10 @@ describe('isolated v2 contract artifacts, not operation discovery', () => {
       expect.stringContaining('issuedAt'),
     ]));
     expect(bundle.$defs.Instant['x-project-s-normalization']).toBeDefined();
+    expect(bundle.$defs.ActorContext['x-project-s-internal-only']).toBe(true);
+    expect(bundle.$defs.PrincipalContext['x-project-s-internal-only']).toBe(true);
+    expect(bundle.$defs.ProblemCode.enum).toContain('STEP_UP_REQUIRED');
+    expect(bundle.$defs.ActorRegisterInput).toMatchObject({ required: ['label'] });
   });
 
   it('ships the new schemas only through the separate package export', async () => {
@@ -68,8 +74,13 @@ describe('isolated v2 contract artifacts, not operation discovery', () => {
     const v2 = await import('@project-s/contracts/v2');
     expect(v1).not.toHaveProperty('v2PrepareBookingInputSchema');
     expect(v1).not.toHaveProperty('generateV2JsonSchemaBundle');
+    expect(v1).not.toHaveProperty('v2ActorContextSchema');
+    expect(v1).not.toHaveProperty('v2ProblemEnvelopeSchema');
     expect(v2.PROJECT_S_V2_CONTRACT_VERSION).toBe(2);
     expect(v2.v2PrepareBookingInputSchema).toBeDefined();
+    expect(v2.v2ActorContextSchema).toBeDefined();
+    expect(v2.v2ActorRevokeInputSchema).toBeDefined();
+    expect(v2.v2ProblemEnvelopeSchema).toBeDefined();
     expect(v2.generateV2ContractArtifacts()).toEqual(generateV2ContractArtifacts());
   });
 });
