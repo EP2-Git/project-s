@@ -50,9 +50,10 @@ contracts, credential lifecycle, retention and real SQL lock/race behavior.
 Acceptance does not make delegation available or waive full-pipeline gates.
 
 The separate [v2 contract foundation](packages/contracts/README.md#v2-mandate-and-booking-schema-foundation)
-now provides initial mandate/booking schemas and lossless time normalization.
-The remaining control/context/evidence contracts, verifier and private SQL
-implementation/proof are still required; no delegated routes are enabled.
+now provides mandate/booking and principal-control schemas, server-only contexts,
+strict problem envelopes and lossless time normalization. Remaining public
+control serializers, provider evidence, verifier and private SQL implementation/
+proof are still required; no delegated routes are enabled.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 

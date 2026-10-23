@@ -28,9 +28,11 @@ npm run build --workspace @project-s/contracts
 The separate `@project-s/contracts/v2` export begins implementation of
 [ADR 0004](../../docs/adr/0004-bounded-mandate-implementation.md). It contains
 mandate review/approval and actor prepare/create request and response parsers,
-privacy-minimal actor summaries/receipts, version-2 success envelopes, and a
-separate deterministic JSON Schema bundle. The root export, v1 artifact digest,
-four-operation registry and public MCP manifest are unchanged.
+principal control inputs and terminal responses, server-only principal/actor
+contexts, privacy-minimal actor summaries/receipts, strict version-2 success and
+problem envelopes, and a separate deterministic JSON Schema bundle. The root
+export, v1 artifact digest, four-operation registry and public MCP manifest are
+unchanged.
 
 ```ts
 import {
@@ -44,8 +46,9 @@ const { jsonSchemaBundle } = generateV2ContractArtifacts();
 
 This is an incremental contract foundation, not an available API. There is no
 v2 router, SDK/MCP adapter, credential verifier, authority provider, private SQL
-state or delegated write. Remaining control operations, server contexts,
-evidence/problem contracts and their implementation follow separately. Object
+state or delegated write. Actor-registration success/audience serialization,
+mandate inspection and step-up status/review serializers, provider evidence
+contracts and their implementation follow separately. Object
 IDs and successfully parsed bodies grant no authority. Actual ownership,
 credential/profile status, server-relative expiry, digest verification,
 availability, revocation, one-use enforcement and races require Core validation.
@@ -55,6 +58,36 @@ principal/credential identity, booker details or duration. Principal review
 summaries include the reviewed name/email; actor summaries and booking receipts
 reject those fields and policy bounds. This response separation is a contract
 constraint, not server-side access-control proof.
+
+Principal controls now model actor registration's display label, revision-bound
+revoke/delete inputs, reviewed booker-profile creation/deletion, and exact
+step-up approval/revocation acknowledgements. Profile data enforces a positive
+validity span of at most seven days without losing microseconds. A parsed
+acknowledgement does not prove approval, atomic revocation, PII deletion or
+one-use replacement; those need the private transaction and its tests. The
+five-minute step-up ceiling is server-enforced because its response carries no
+issuance time. Remaining public serializers must be reconciled with the reviewed
+design before adapters are exposed; no open-ended state or difference payload
+is accepted as a substitute.
+
+`v2PrincipalContextSchema` and `v2ActorContextSchema` describe **internal server
+inputs**, not request bodies. Both bind protocol version, instance, positive
+epoch, principal equal to subject, verification time and the reviewed transport.
+The actor context also requires its actor/credential IDs, revision and verifier
+fingerprint. Parsing does not authenticate any of those claims; the gateway must
+derive them from verified state, and Core must revalidate current records under
+locks. Never accept context overrides or log the fingerprint/identity binding.
+
+`v2ProblemEnvelopeSchema` keeps a separate code enum and matching inner/outer
+request IDs. Only `STEP_UP_REQUIRED` may carry a required review reference;
+`AUTHORITY_BUSY` requires the reviewed one-second retry. Review URLs have the
+exact review path/UUID, but only the server can check their configured same
+origin. Alternative slots are limited to three and retain exact time ordering.
+Public error producers must still redact free-form text: a schema cannot prove
+that a bounded message contains no secret, personal data or diagnostic detail.
+Provider errors never authorize falling back to v1 browser authority.
+V2 rejects the legacy `CONFIRMATION_REQUIRED` code and `confirm_in_browser`
+retry action; their v1 contracts remain unchanged.
 
 V2 instants accept the existing four-digit-year ISO shape with seconds, a `Z`/`z`
 or numeric offset, and zero to six fractional digits. Parsing validates Gregorian
