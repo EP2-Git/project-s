@@ -6,6 +6,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- Updated Vitest, its coverage provider and workspace test dependencies to
+  4.1.12, resolving the development-only manual mock registration and Windows
+  mock redirect allowlist advisories. Application code, test thresholds and
+  audit policy are unchanged.
 - Updated Vite from 8.2.1 to the patched 8.2.4 release to address the bundled
   launch-editor advisories without changing application code or audit policy.
 
