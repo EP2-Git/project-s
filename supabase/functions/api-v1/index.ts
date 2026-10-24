@@ -27,6 +27,7 @@ import {
   SupabaseAuditSink,
   SupabaseSchedulingAuthority,
 } from '../_shared/supabaseAuthority.ts';
+import { parseRequestBody as parseBody } from '../_shared/requestBody.ts';
 
 const jsonHeaders = {
   'cache-control': 'no-store',
@@ -196,7 +197,7 @@ const contextFor = async (
   return executionContextSchema.parse(context);
 };
 
-const corsHeadersFor = (request: Request) => {
+const corsHeadersFor = (request: Request): Record<string, string> => {
   const origin = request.headers.get('origin');
   if (!origin) return {};
   if (!allowedOrigins.has(origin)) {
@@ -222,7 +223,7 @@ const responseJson = (
   status: number,
   cors: Record<string, string>,
   extraHeaders: Record<string, string> = {},
-  mediaType = PROJECT_S_CONTRACT_MEDIA_TYPE,
+  mediaType: string = PROJECT_S_CONTRACT_MEDIA_TYPE,
 ) =>
   new Response(JSON.stringify(body), {
     status,
@@ -239,35 +240,6 @@ const responseJson = (
       ...extraHeaders,
     },
   });
-
-const parseBody = async (request: Request): Promise<unknown> => {
-  const declared = Number(request.headers.get('content-length') ?? '0');
-  if (Number.isFinite(declared) && declared > 16_384) {
-    throw new ProjectSApplicationError({
-      status: 413,
-      code: 'VALIDATION_ERROR',
-      detail: 'The request body is too large.',
-    });
-  }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > 16_384) {
-    throw new ProjectSApplicationError({
-      status: 413,
-      code: 'VALIDATION_ERROR',
-      detail: 'The request body is too large.',
-    });
-  }
-  try {
-    return JSON.parse(text || '{}');
-  } catch (cause) {
-    throw new ProjectSApplicationError({
-      status: 400,
-      code: 'VALIDATION_ERROR',
-      detail: 'The request body must be valid JSON.',
-      cause,
-    });
-  }
-};
 
 const titleFor = (code: ProjectSProblemCode) =>
   code
@@ -474,7 +446,7 @@ const challengeConfirmation = async (
 };
 
 Deno.serve(async (request) => {
-  let requestId = crypto.randomUUID();
+  let requestId: string = crypto.randomUUID();
   let cors: Record<string, string> = {};
   try {
     cors = corsHeadersFor(request);

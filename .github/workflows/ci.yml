@@ -37,6 +37,21 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+      - name: Install verified Deno for Edge checks
+        shell: bash
+        run: |
+          archive="$RUNNER_TEMP/project-s-deno-2.9.8.zip"
+          destination="$RUNNER_TEMP/project-s-deno-2.9.8"
+          curl --fail --location --proto '=https' --tlsv1.2 --output "$archive" \
+            https://github.com/denoland/deno/releases/download/v2.9.8/deno-x86_64-unknown-linux-gnu.zip
+          printf '%s  %s\n' 'e890975bc2549807bbcc0b584ffafda72cc7c93349dd99c80483dd784f6c4609' "$archive" | sha256sum --check --strict
+          mkdir -p "$destination"
+          unzip -q "$archive" -d "$destination"
+          printf '%s\n' "$destination" >> "$GITHUB_PATH"
+      - name: Verify Node and Edge migration parity
+        run: npm run test:parity:edge
+      - name: Check the complete Edge entrypoint
+        run: deno check --no-lock --node-modules-dir=none --config=supabase/functions/api-v1/deno.json supabase/functions/api-v1/index.ts
       - run: npm run test:coverage
       - run: npm run build
       - run: npm run audit
@@ -130,6 +145,7 @@ jobs:
       - run: npm run db:env
       - run: npm run test:agent-flow
       - run: npm run test:e2e:install
+      - run: npm run test:browser:body-limits
       - run: npm run test:built-app
       - run: npm run test:e2e
       - name: Upload browser report

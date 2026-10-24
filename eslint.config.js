@@ -14,6 +14,8 @@ export default tseslint.config(
       "node_modules",
       "playwright-report",
       "supabase/.temp",
+      // Byte-identical build copies; original package sources remain linted.
+      "supabase/functions/_shared/.generated/**",
       "test-results",
       "src/components/dashboard.zip",
     ],

@@ -9,7 +9,7 @@ import {
   requestIdNode,
   titleNode,
 } from '../common.js';
-import { contractNode, objectNode, type ContractNode } from '../schema.js';
+import { contractLiteral, contractNode, contractNumber, contractString, objectNode, type ContractNode } from '../schema.js';
 import {
   compareV2Instants,
   v2ContractVersionNode,
@@ -21,13 +21,13 @@ import {
 } from './scalars.js';
 
 /** Partial, unavailable v2 wire foundation. Parsing is not authentication or authority. */
-const maxDurationMinutesNode = contractNode(z.number().int().min(5).max(1_440), {
+const maxDurationMinutesNode = contractNode(contractNumber({ integer: true, minimum: 5, maximum: 1_440 }), {
   type: 'integer',
   minimum: 5,
   maximum: 1_440,
 });
 const reviewedNameNode = contractNode(
-  bookerNode.zod.shape.name,
+  bookerNode.shape.name,
   (bookerNode.jsonSchema.properties as Record<string, Record<string, unknown>>).name,
 );
 const maximumPermissionMicroseconds = 24n * 60n * 60n * 1_000_000n;
@@ -131,7 +131,7 @@ export const v2MandateApproveInputSchema = v2MandateApproveInputNode.zod;
 const v2MandateApprovedDataBaseNode = objectNode({
   mandateId: v2UuidNode,
   revision: v2RevisionNode,
-  state: contractNode(z.literal('active'), { type: 'string', const: 'active' }),
+  state: contractNode(contractLiteral('active'), { type: 'string', const: 'active' }),
   issuedAt: v2InstantNode,
   expiresAt: v2InstantNode,
 }, { title: 'V2MandateApprovedData' });
@@ -190,7 +190,7 @@ export const v2PreparedBookingSummarySchema = v2PreparedBookingSummaryNode.zod;
 export const v2PrepareBookingDataNode = objectNode({
   preparationId: v2UuidNode,
   expiresAt: v2InstantNode,
-  notHeld: contractNode(z.literal(true), { type: 'boolean', const: true }),
+  notHeld: contractNode(contractLiteral(true), { type: 'boolean', const: true }),
   summaryDigest: v2DigestNode,
   summary: v2PreparedBookingSummaryNode,
 }, { title: 'V2PrepareBookingData' });
@@ -204,10 +204,10 @@ export const v2CreateBookingInputSchema = v2CreateBookingInputNode.zod;
 
 const v2BookingBaseNode = objectNode({
   ...bookingSummaryShape,
-  confirmationCode: contractNode(z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/), {
+  confirmationCode: contractNode(contractString({ minLength: 1, maxLength: 128, pattern: /^[A-Za-z0-9_-]+$/ }), {
     type: 'string', minLength: 1, maxLength: 128, pattern: '^[A-Za-z0-9_-]+$',
   }),
-  status: contractNode(z.literal('confirmed'), { type: 'string', const: 'confirmed' }),
+  status: contractNode(contractLiteral('confirmed'), { type: 'string', const: 'confirmed' }),
 }, { title: 'V2Booking', description: 'Minimal actor booking result; no idempotency key, policy bounds or profile PII.' });
 export const v2BookingNode = contractNode(
   v2BookingBaseNode.zod.refine(validMeetingOrder, {
@@ -224,7 +224,7 @@ export const v2BookingReceiptDataNode = objectNode({
 }, { title: 'V2BookingReceiptData' });
 export const v2BookingReceiptDataSchema = v2BookingReceiptDataNode.zod;
 
-export const v2SuccessEnvelopeNode = <TSchema extends z.ZodTypeAny>(
+export const v2SuccessEnvelopeNode = <TSchema extends z.ZodType>(
   data: ContractNode<TSchema>,
 ) => objectNode({
   contractVersion: v2ContractVersionNode,

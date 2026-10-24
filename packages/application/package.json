@@ -15,7 +15,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/annotate-package-types.mjs dist",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
     "test": "vitest run --config vitest.config.ts"
   },

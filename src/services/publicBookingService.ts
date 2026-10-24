@@ -6,11 +6,15 @@ import {
   parseProjectSProblem,
 } from '@project-s/sdk';
 import {
+  BodyTooLargeError,
+  PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES,
+  contractString,
   isoInstantSchema,
   prepareBookingInputSchema,
   preparedBookingSummarySchema,
   preparationTokenSchema,
   projectSProblemCodeSchema,
+  readBoundedText,
   uuidSchema,
   type ProjectSProblemCode,
 } from '@project-s/contracts';
@@ -107,11 +111,13 @@ const confirmationResultSchema = z
   })
   .strict();
 
-const supportEnvelopeSchema = <T extends z.ZodTypeAny>(data: T) =>
+type SupportSchema = typeof preparationPreviewSchema | typeof confirmationResultSchema;
+
+const supportEnvelopeSchema = (data: SupportSchema) =>
   z
     .object({
       contractVersion: z.literal(1),
-      requestId: z.string().min(8).max(128),
+      requestId: contractString({ minLength: 8, maxLength: 128 }),
       data,
     })
     .strict();
@@ -119,11 +125,21 @@ const supportEnvelopeSchema = <T extends z.ZodTypeAny>(data: T) =>
 export type PreparationPreview = z.infer<typeof preparationPreviewSchema>;
 export type ConfirmationResult = z.infer<typeof confirmationResultSchema>;
 
-const supportRequest = async <T>(
+async function supportRequest(
   path: string,
   body: unknown,
-  schema: z.ZodType<T>,
-): Promise<T> => {
+  schema: typeof preparationPreviewSchema,
+): Promise<PreparationPreview>;
+async function supportRequest(
+  path: string,
+  body: unknown,
+  schema: typeof confirmationResultSchema,
+): Promise<ConfirmationResult>;
+async function supportRequest(
+  path: string,
+  body: unknown,
+  schema: SupportSchema,
+): Promise<PreparationPreview | ConfirmationResult> {
   let response: Response;
   try {
     response = await fetch(`${env.projectSApiUrl.replace(/\/$/, '')}${path}`, {
@@ -140,7 +156,22 @@ const supportRequest = async <T>(
     throw asPublicBookingError(error);
   }
 
-  const payload = await response.json().catch(() => undefined);
+  let text: string;
+  try {
+    text = await readBoundedText(response.body, PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES, {
+      declaredLength: response.headers.get('content-length'),
+    });
+  } catch (error) {
+    throw asPublicBookingError(error instanceof BodyTooLargeError
+      ? new ProjectSProtocolError(
+        'Project S returned a response that exceeds the public contract size limit.',
+        response.status,
+        response.headers.get('x-request-id'),
+      )
+      : new ProjectSTransportError('Could not read the Project S response.', error));
+  }
+  let payload: unknown;
+  try { payload = JSON.parse(text) as unknown; } catch { payload = undefined; }
   if (!response.ok) {
     const problem = parseProjectSProblem(payload);
     throw asPublicBookingError(
@@ -149,8 +180,8 @@ const supportRequest = async <T>(
   }
   const parsed = supportEnvelopeSchema(schema).safeParse(payload);
   if (!parsed.success) throw asPublicBookingError(parsed.error);
-  return parsed.data.data as T;
-};
+  return parsed.data.data;
+}
 
 const withPublicErrors = async <T>(operation: () => Promise<T>): Promise<T> => {
   try {

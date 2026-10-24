@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { requestIdNode } from '../common.js';
-import { contractNode, objectNode } from '../schema.js';
+import { contractEnum, contractNode, objectNode } from '../schema.js';
 import { v2ContractVersionNode, v2DigestNode, v2InstantNode, v2RevisionNode, v2UuidNode } from './scalars.js';
 
 // Internal, server-derived inputs from ADR 0004. Parsing an object does not
@@ -29,7 +29,7 @@ const bindingRefinements = [
 
 const principalContextBaseNode = objectNode({
   ...principalShape,
-  transport: contractNode(z.enum(['ui', 'http']), { type: 'string', enum: ['ui', 'http'] }),
+  transport: contractNode(contractEnum(['ui', 'http']), { type: 'string', enum: ['ui', 'http'] }),
 }, {
   title: 'V2PrincipalContext',
   description: 'Internal verified-account context. Never accept a public body or context override as this input.',
@@ -50,7 +50,7 @@ const actorContextBaseNode = objectNode({
   credentialId: v2UuidNode,
   credentialRevision: v2RevisionNode,
   credentialFingerprint: v2DigestNode,
-  transport: contractNode(z.enum(['http', 'stdio_mcp']), { type: 'string', enum: ['http', 'stdio_mcp'] }),
+  transport: contractNode(contractEnum(['http', 'stdio_mcp']), { type: 'string', enum: ['http', 'stdio_mcp'] }),
 }, {
   title: 'V2ActorContext',
   description: 'Internal verified-credential context. Fingerprint and identity references stay out of public responses and logs.',

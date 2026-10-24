@@ -19,20 +19,22 @@ import {
 import {
   arrayNode,
   contractNode,
+  contractString,
+  contractNumber,
+  contractLiteral,
   objectNode,
-  type ContractNode,
 } from './schema.js';
 
-const durationMinutesNode = contractNode(z.number().int().min(5).max(1_440), {
+const durationMinutesNode = contractNode(contractNumber({ integer: true, minimum: 5, maximum: 1_440 }), {
   type: 'integer',
   minimum: 5,
   maximum: 1_440,
 });
 const minNoticeMinutesNode = contractNode(
-  z.number().int().nonnegative().max(525_600),
+  contractNumber({ integer: true, minimum: 0, maximum: 525_600 }),
   { type: 'integer', minimum: 0, maximum: 525_600 },
 );
-const maxAdvanceDaysNode = contractNode(z.number().int().min(1).max(730), {
+const maxAdvanceDaysNode = contractNode(contractNumber({ integer: true, minimum: 1, maximum: 730 }), {
   type: 'integer',
   minimum: 1,
   maximum: 730,
@@ -58,7 +60,7 @@ const publicSlotBaseNode = objectNode(
   },
   { title: 'PublicSlot' },
 );
-export const publicSlotNode: ContractNode<z.ZodEffects<typeof publicSlotBaseNode.zod>> =
+export const publicSlotNode =
   contractNode(
     publicSlotBaseNode.zod.refine(
       ({ startAt, endAt }) => new Date(endAt).getTime() > new Date(startAt).getTime(),
@@ -140,9 +142,7 @@ const preparedBookingSummaryBaseNode = objectNode(
   },
   { title: 'PreparedBookingSummary' },
 );
-export const preparedBookingSummaryNode: ContractNode<
-  z.ZodEffects<typeof preparedBookingSummaryBaseNode.zod>
-> = contractNode(
+export const preparedBookingSummaryNode = contractNode(
   preparedBookingSummaryBaseNode.zod.refine(
     ({ startAt, endAt }) => new Date(endAt).getTime() > new Date(startAt).getTime(),
     { message: 'endAt must be later than startAt.', path: ['endAt'] },
@@ -155,7 +155,7 @@ export const prepareBookingDataNode = objectNode(
   {
     confirmationUrl: httpsOrLocalUrlNode,
     expiresAt: isoInstantNode,
-    notHeld: contractNode(z.literal(true), { type: 'boolean', const: true }),
+    notHeld: contractNode(contractLiteral(true), { type: 'boolean', const: true }),
     preparationId: uuidNode,
     preparationToken: preparationTokenNode,
     summary: preparedBookingSummaryNode,
@@ -178,7 +178,7 @@ export const createBookingInputSchema = createBookingInputNode.zod;
 const createBookingDataBaseNode = objectNode(
   {
     confirmationCode: contractNode(
-      z.string().min(1).max(128).regex(/^[A-Za-z0-9_-]+$/),
+      contractString({ minLength: 1, maxLength: 128, pattern: /^[A-Za-z0-9_-]+$/ }),
       {
         type: 'string',
         minLength: 1,
@@ -193,7 +193,7 @@ const createBookingDataBaseNode = objectNode(
     meetingTypeId: uuidNode,
     meetingTypeTitle: titleNode,
     startAt: isoInstantNode,
-    status: contractNode(z.literal('confirmed'), {
+    status: contractNode(contractLiteral('confirmed'), {
       type: 'string',
       const: 'confirmed',
     }),
@@ -201,9 +201,7 @@ const createBookingDataBaseNode = objectNode(
   },
   { title: 'CreateBookingData' },
 );
-export const createBookingDataNode: ContractNode<
-  z.ZodEffects<typeof createBookingDataBaseNode.zod>
-> = contractNode(
+export const createBookingDataNode = contractNode(
   createBookingDataBaseNode.zod.refine(
     ({ startAt, endAt }) => new Date(endAt).getTime() > new Date(startAt).getTime(),
     { message: 'endAt must be later than startAt.', path: ['endAt'] },

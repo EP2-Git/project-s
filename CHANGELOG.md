@@ -6,6 +6,12 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- Migrated the local candidate to genuine Zod 4.6.7 in Node and Edge with
+  compatibility adapters for existing v1/v2 contracts and form resolver 5.2.2.
+  Preserved early collection rejection and bounded HTTP request/SDK/browser
+  success/error stream reads for GHSA-mrhx-c7xc-m3w5. No release, deployment or
+  remote alert dismissal is implied; source API changes are documented in the
+  Zod 4 consumer migration guide.
 - Updated Vitest, its coverage provider and workspace test dependencies to
   4.1.12, resolving the development-only manual mock registration and Windows
   mock redirect allowlist advisories. Application code, test thresholds and
@@ -15,6 +21,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- An accepted local Zod 4 compatibility RFC/ADR, consumer migration guide and
+  regression/probe harnesses covering legacy acceptance, normalization, inferred
+  types, error continuation/order and patched collection limits. Full pipeline
+  integration remains a separate gate.
 - Strict v2 issuer-control inputs/terminal responses, server-only caller contexts
   and step-up/refusal envelopes. Parsing cannot establish live authority; public
   v1 and the app remain unchanged, and delegated writes stay unavailable.

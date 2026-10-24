@@ -33,7 +33,7 @@
     "build:contracts": "npm run build --workspace @project-s/contracts",
     "build:application": "npm run build --workspace @project-s/application",
     "build:sdk": "npm run build --workspace @project-s/sdk",
-    "build:packages": "npm run build:contracts && npm run build:application && npm run build:sdk",
+    "build:packages": "npm run build:contracts && npm run build:application && npm run build:sdk && node scripts/prepare-edge-packages.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run build:packages && npm run typecheck:packages && tsc -p tsconfig.app.json --noEmit --pretty false && tsc -p tsconfig.node.json --noEmit --pretty false",
@@ -50,7 +50,10 @@
     "test:application": "npm run test --workspace @project-s/application",
     "test:sdk": "npm run test --workspace @project-s/sdk",
     "test:mcp": "node --test packages/mcp-server/tests/*.test.mjs",
-    "test:parity": "npm run build:packages && node --test tests/parity/*.test.mjs",
+    "test:parity": "npm run build:packages && node --experimental-strip-types --test tests/parity/*.test.mjs",
+    "test:parity:edge": "npm run build:packages && deno test --no-lock --node-modules-dir=none --no-prompt --config=supabase/functions/api-v1/deno.json tests/parity/resource-parity.test.mjs tests/parity/migration-compatibility.test.mjs",
+    "probe:zod-migration": "node --max-old-space-size=64 scripts/probe-zod-migration.mjs",
+    "test:browser:body-limits": "npm run build:packages && node scripts/check-browser-support-limits.mjs",
     "test:install-smoke": "node scripts/install-smoke.mjs",
     "test:agent-flow": "npm run build:packages && node scripts/check-agent-booking-flow.mjs",
     "test:watch": "vitest",
@@ -87,7 +90,7 @@
     "check:full": "npm run check && npm run db:lint && npm run test:db && npm run test:concurrency && npm run types:check && npm run test:agent-flow && npm run test:e2e"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "5.2.2",
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-alert-dialog": "^1.1.23",
     "@radix-ui/react-aspect-ratio": "^1.1.15",
@@ -135,7 +138,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.7.0",
     "vaul": "^0.9.3",
-    "zod": "^3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

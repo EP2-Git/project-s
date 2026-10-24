@@ -1,13 +1,16 @@
 import { z } from 'zod';
+import { contractNumber, uuidSchema, withContractObjectInput } from '@project-s/contracts';
 import { isoInstantSchema } from '@/types/publicBooking';
 
-export const cancelBookingResponseSchema = z
+export const cancelBookingResponseSchema = withContractObjectInput(z
   .object({
-    bookingId: z.string().uuid(),
+    bookingId: uuidSchema,
     status: z.literal('cancelled'),
-    version: z.number().int().positive(),
+    version: contractNumber({ integer: true }).refine((value) => value > 0, {
+      message: 'Number must be greater than 0',
+    }),
     canceledAt: isoInstantSchema.nullable(),
   })
-  .strict();
+  .strict());
 
 export type CancelBookingResponse = z.infer<typeof cancelBookingResponseSchema>;
