@@ -70,6 +70,8 @@ local data while evaluating it.
 - [Security model](security-model.md) — current controls and deployment duties.
 - [Zod resource limits](zod-resource-limits.md) — local collection/stream
   mitigation, compatibility evidence and the remaining dependency finding.
+- [Proposed Zod 4 migration](rfcs/zod-4-compatibility-migration.md) — required
+  compatibility work and gates; no dependency migration is implemented.
 - [Agent threat model](agent-threat-model.md) — client, transport, and authority
   threats.
 - [Confirmation flow](agent-confirmation-flow.md) — explicit browser authority

@@ -6,11 +6,14 @@ import {
   parseProjectSProblem,
 } from '@project-s/sdk';
 import {
+  BodyTooLargeError,
+  PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES,
   isoInstantSchema,
   prepareBookingInputSchema,
   preparedBookingSummarySchema,
   preparationTokenSchema,
   projectSProblemCodeSchema,
+  readBoundedText,
   uuidSchema,
   type ProjectSProblemCode,
 } from '@project-s/contracts';
@@ -140,7 +143,22 @@ const supportRequest = async <T>(
     throw asPublicBookingError(error);
   }
 
-  const payload = await response.json().catch(() => undefined);
+  let text: string;
+  try {
+    text = await readBoundedText(response.body, PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES, {
+      declaredLength: response.headers.get('content-length'),
+    });
+  } catch (error) {
+    throw asPublicBookingError(error instanceof BodyTooLargeError
+      ? new ProjectSProtocolError(
+        'Project S returned a response that exceeds the public contract size limit.',
+        response.status,
+        response.headers.get('x-request-id'),
+      )
+      : new ProjectSTransportError('Could not read the Project S response.', error));
+  }
+  let payload: unknown;
+  try { payload = JSON.parse(text) as unknown; } catch { payload = undefined; }
   if (!response.ok) {
     const problem = parseProjectSProblem(payload);
     throw asPublicBookingError(

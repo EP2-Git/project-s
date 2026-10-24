@@ -6,7 +6,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
-- Added early collection-size rejection and bounded HTTP request/SDK response
+- Added early collection-size rejection and bounded HTTP request/SDK/browser response
   stream reads while preserving v1/v2 schemas. This is a local application
   mitigation for GHSA-mrhx-c7xc-m3w5; Zod 3 remains affected and its audit finding
   remains open pending a reviewed dependency migration or upstream backport.
@@ -19,6 +19,9 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A proposed Zod 4 compatibility RFC/ADR and local migration regression/probe
+  harnesses. Dependency declarations and the Edge import map remain on v3 until
+  the design is reviewed and a separate migration satisfies the required gates.
 - Strict v2 issuer-control inputs/terminal responses, server-only caller contexts
   and step-up/refusal envelopes. Parsing cannot establish live authority; public
   v1 and the app remain unchanged, and delegated writes stay unavailable.

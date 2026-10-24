@@ -81,6 +81,15 @@ come from the existing codecs where legacy schema metadata omits a maximum.
 Maximum canonical DTO fixtures for all four operations and problems fit this
 budget. A future unbounded response schema fails budget derivation explicitly.
 
+The browser's preparation preview and human confirmation helper uses the same
+reader and budget for both successful and problem responses. Preview contains
+a subset of the already-budgeted prepare response; confirmation has a fixed
+smaller envelope. Tests verify their longest legitimate fields fit. The helper
+retains canonical problems, retry information, normalization, strict field
+rejection and the existing approval request. Oversize and stream failures map
+to the existing safe protocol/connection messages, without displaying upstream
+diagnostics or retaining an oversized body. It does not add approval authority.
+
 The server emits normalized compact JSON with `JSON.stringify`. Unlimited JSON
 whitespace, arbitrarily padded pre-normalized strings or unrelated fields do
 not have a finite maximum and are intentionally not an unlimited compatibility
@@ -96,6 +105,7 @@ remain `ProjectSApiError`, and public problem codes/fields are unchanged.
 npm run check
 npm run test:parity
 npm run test:parity:edge
+npm run test:browser:body-limits
 npm run docs:check
 npm run security:scan
 npm run licenses:check
@@ -120,9 +130,33 @@ Zod migration or a genuine upstream-compatible patched release is still needed
 to clear the dependency finding without weakening audit policy. This mitigation
 does not impose global service memory, time, rate or concurrency budgets. Fetch
 or a custom stream may allocate an incoming chunk before the reader receives
-it. Browser preview/confirmation support requests still use their separate
-`response.json()` reader; extending that helper is a separate scope choice.
-Unrelated provider fetches and the MCP line reader are not rewritten.
+it. Unrelated provider fetches and the MCP line reader are not rewritten.
+
+## Proposed dependency migration
+
+The [Zod 4 migration RFC](rfcs/zod-4-compatibility-migration.md) and
+[ADR 0005](adr/0005-zod-4-compatibility-migration.md) are **proposed** for review.
+The current authorization covers the mitigation, proposal and local tests;
+production dependencies, the lockfile and Edge import map remain unchanged.
+The proposal needs explicit review before implementing the dependency migration.
+
+`tests/parity/migration-compatibility.test.mjs` freezes actual v1/v2 acceptance,
+normalization and error boundaries in Node and standalone Deno. Separately,
+`npm run probe:zod-migration` inspects a small, bounded raw-library sample. Pass
+`-- --candidate-dir <absolute-package-directory> --expected-version 4.6.7` to
+inspect a verified, externally unpacked official candidate without installing
+it in the application. The probe has no downloader or dependency mutation.
+Its passing result demonstrates the sampled upstream fix, not an application
+migration or complete parity. Both versions leave unbounded collections
+unbounded; the v3 subpath is not an acceptable workaround.
+
+Side-by-side observations of 3.25.76 and official 4.6.7 confirm changed UUID,
+Unicode length, integer and diagnostic semantics. A separate no-emit TypeScript
+resolution probe passes against current v3 and reports 24 diagnostics against
+v4, including the removed effects type, object generics and temporary v3 array
+internals. The migration must deliberately replace those internals, preserve
+wire behavior and document exposed Zod parser type changes. Neither the raw
+probe nor the baseline suite claims this implementation already exists.
 
 ## Rollback
 
