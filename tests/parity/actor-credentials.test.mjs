@@ -150,7 +150,7 @@ test('actor credentials: invalid configured bindings do not reach identity provi
     { ...binding, audience: 'https://authority.example.invalid/path' },
     { ...binding, audience: 'https://authority.example.invalid?host=other' },
     { ...binding, audience: 'https://authority.example.invalid#review' },
-    { ...binding, audience: 'https://user:password@authority.example.invalid' },
+    { ...binding, audience: 'https://user:password@example.invalid' },
   ]) {
     let calls = 0;
     await assert.rejects(authenticatePrincipal(principalOptions(async () => {
