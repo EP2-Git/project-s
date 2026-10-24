@@ -355,6 +355,33 @@ export type Database = {
         Args: { p_context: Json; p_request: Json }
         Returns: Json
       }
+      project_s_get_actor_credential_v2: {
+        Args: {
+          p_credential_id: string
+          p_epoch: number
+          p_instance_id: string
+        }
+        Returns: Json
+      }
+      project_s_register_actor_v2: {
+        Args: {
+          p_actor_id: string
+          p_context: Json
+          p_credential_id: string
+          p_expires_at: string
+          p_label: string
+          p_verifier: string
+        }
+        Returns: Json
+      }
+      project_s_revoke_actor_v2: {
+        Args: {
+          p_actor_id: string
+          p_context: Json
+          p_expected_revision: number
+        }
+        Returns: Json
+      }
       set_weekly_schedule_v1: { Args: { p_schedule: Json }; Returns: undefined }
     }
     Enums: {

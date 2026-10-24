@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Add the disabled-boundary C1 actor credential store, server authentication
+  adapter, principal-fenced revocation and sequenced minimal audit, with Node/
+  Deno and SQL denial/wait regressions. No instance configuration, delegated
+  route, booking permission or UI is enabled by this foundation.
+
 ### Security
 
 - Migrated the local candidate to genuine Zod 4.6.7 in Node and Edge with
