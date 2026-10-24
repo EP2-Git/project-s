@@ -17,6 +17,7 @@ test-results
 .temp-supabase
 supabase/.branches
 supabase/.temp
+supabase/functions/_shared/.generated/
 *.tsbuildinfo
 .env
 .env.*

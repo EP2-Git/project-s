@@ -33,7 +33,7 @@
     "build:contracts": "npm run build --workspace @project-s/contracts",
     "build:application": "npm run build --workspace @project-s/application",
     "build:sdk": "npm run build --workspace @project-s/sdk",
-    "build:packages": "npm run build:contracts && npm run build:application && npm run build:sdk",
+    "build:packages": "npm run build:contracts && npm run build:application && npm run build:sdk && node scripts/prepare-edge-packages.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run build:packages && npm run typecheck:packages && tsc -p tsconfig.app.json --noEmit --pretty false && tsc -p tsconfig.node.json --noEmit --pretty false",

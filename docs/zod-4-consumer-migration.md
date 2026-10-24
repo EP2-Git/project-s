@@ -125,6 +125,15 @@ repair, not a `no-check` or `skipLibCheck` waiver. Runtime JavaScript semantics
 are unchanged. Edge also has explicit string/CORS annotations where literal
 inference was too narrow for existing values.
 
+The package build also prepares byte-identical `contracts` and `application`
+artifacts under the ignored `supabase/functions/_shared/.generated` directory.
+Edge aliases use those complete trees because the local Supabase runtime mounts
+external runtime JavaScript dependencies without their sibling declarations.
+Keeping the declarations inside the existing functions mount prevents an Edge
+boot failure from the type links. Copied source trees preserve relative source
+map locations. These are generated build outputs, not a second implementation;
+do not edit them. Node package output and its portable type links are unchanged.
+
 Verify the actual graph with `npm ls zod @hookform/resolvers --all` and the
 Edge import map, followed by Node parity, standalone Deno parity and the full
 Edge entrypoint typecheck. Standalone Deno is distinct from Supabase's bundled
