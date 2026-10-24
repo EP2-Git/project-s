@@ -3,6 +3,11 @@ import { z } from 'zod';
 import {
   arrayNode,
   contractNode,
+  contractString,
+  contractNumber,
+  contractEnum,
+  contractLiteral,
+  contractTransform,
   nullableNode,
   objectNode,
   optionalNode,
@@ -35,14 +40,14 @@ const validTimeZone = (value: string): boolean => {
   }
 };
 
-export const contractVersionNode = contractNode(z.literal(1), {
+export const contractVersionNode = contractNode(contractLiteral(1), {
   type: 'integer',
   const: 1,
 });
 export const contractVersionSchema = contractVersionNode.zod;
 
 export const requestIdNode = contractNode(
-  z.string().min(8).max(128).regex(/^[A-Za-z0-9._~-]+$/),
+  contractString({ minLength: 8, maxLength: 128, pattern: /^[A-Za-z0-9._~-]+$/ }),
   {
     type: 'string',
     minLength: 8,
@@ -52,14 +57,14 @@ export const requestIdNode = contractNode(
 );
 export const requestIdSchema = requestIdNode.zod;
 
-export const uuidNode = contractNode(z.string().uuid(), {
+export const uuidNode = contractNode(contractString({ format: 'uuid' }), {
   type: 'string',
   format: 'uuid',
 });
 export const uuidSchema = uuidNode.zod;
 
 export const localDateNode = contractNode(
-  z.string().refine(validLocalDate, 'Invalid calendar date.'),
+  contractString().refine(validLocalDate, 'Invalid calendar date.'),
   {
     type: 'string',
     format: 'date',
@@ -71,16 +76,13 @@ export const localDateSchema = localDateNode.zod;
 const isoInstantPattern =
   '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:[zZ]|[+-]\\d{2}:\\d{2})$';
 export const isoInstantNode = contractNode(
-  z
-    .string()
-    .datetime({ offset: true })
-    .regex(new RegExp(isoInstantPattern)),
+  contractString({ format: 'datetime' }).regex(new RegExp(isoInstantPattern), 'Invalid'),
   { type: 'string', format: 'date-time', pattern: isoInstantPattern },
 );
 export const isoInstantSchema = isoInstantNode.zod;
 
 export const ianaTimeZoneNode = contractNode(
-  z.string().min(1).max(255).refine(validTimeZone, 'Invalid IANA time zone.'),
+  contractString({ minLength: 1, maxLength: 255 }).refine(validTimeZone, 'Invalid IANA time zone.'),
   {
     type: 'string',
     minLength: 1,
@@ -91,7 +93,7 @@ export const ianaTimeZoneNode = contractNode(
 export const ianaTimeZoneSchema = ianaTimeZoneNode.zod;
 
 export const publicUsernameNode = contractNode(
-  z.string().min(3).max(30).regex(/^[a-z0-9][a-z0-9_-]{2,29}$/),
+  contractString({ minLength: 3, maxLength: 30, pattern: /^[a-z0-9][a-z0-9_-]{2,29}$/ }),
   {
     type: 'string',
     minLength: 3,
@@ -101,24 +103,24 @@ export const publicUsernameNode = contractNode(
 );
 export const publicUsernameSchema = publicUsernameNode.zod;
 
-export const displayNameNode = contractNode(z.string().trim().min(1).max(120), {
+export const displayNameNode = contractNode(contractString({ trim: true, minLength: 1, maxLength: 120 }), {
   type: 'string',
   minLength: 1,
   maxLength: 120,
 });
-export const titleNode = contractNode(z.string().trim().min(1).max(160), {
+export const titleNode = contractNode(contractString({ trim: true, minLength: 1, maxLength: 160 }), {
   type: 'string',
   minLength: 1,
   maxLength: 160,
 });
 export const descriptionNode = nullableNode(
-  contractNode(z.string().trim().max(2_000), {
+  contractNode(contractString({ trim: true, maxLength: 2_000 }), {
     type: 'string',
     maxLength: 2_000,
   }),
 );
 export const httpsOrLocalUrlNode = contractNode(
-  z.string().url().max(2_048).refine((value) => {
+  contractString({ format: 'url', maxLength: 2_048 }).refine((value) => {
     const url = new URL(value);
     return url.protocol === 'https:' ||
       (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname));
@@ -139,11 +141,9 @@ const bookerNotesPattern = '^ *(?:\\S|\\S[\\s\\S]{0,1998}\\S) *$';
 const trimAsciiSpaces = (value: string) => value.replace(/^ +| +$/g, '');
 
 export const emailNode = contractNode(
-  z
-    .string()
-    .regex(new RegExp(bookerEmailPattern))
-    .transform((value) => trimAsciiSpaces(value).toLowerCase())
-    .pipe(z.string().max(320)),
+  contractTransform(contractString({ pattern: new RegExp(bookerEmailPattern) }),
+    (value) => trimAsciiSpaces(value).toLowerCase())
+    .pipe(contractString({ maxLength: 320 })),
   {
     type: 'string',
     pattern: bookerEmailPattern,
@@ -155,10 +155,7 @@ export const bookerNode = objectNode(
   {
     email: emailNode,
     name: contractNode(
-      z
-        .string()
-        .regex(new RegExp(bookerNamePattern))
-        .transform(trimAsciiSpaces),
+      contractTransform(contractString({ pattern: new RegExp(bookerNamePattern) }), trimAsciiSpaces),
       {
         type: 'string',
         pattern: bookerNamePattern,
@@ -167,10 +164,7 @@ export const bookerNode = objectNode(
     ),
     notes: optionalNode(
       contractNode(
-        z
-          .string()
-          .regex(new RegExp(bookerNotesPattern))
-          .transform(trimAsciiSpaces),
+        contractTransform(contractString({ pattern: new RegExp(bookerNotesPattern) }), trimAsciiSpaces),
         {
           type: 'string',
           pattern: bookerNotesPattern,
@@ -184,7 +178,7 @@ export const bookerNode = objectNode(
 export const bookerSchema = bookerNode.zod;
 
 export const preparationTokenNode = contractNode(
-  z.string().min(32).max(4_096).regex(/^[A-Za-z0-9._~-]+$/),
+  contractString({ minLength: 32, maxLength: 4_096, pattern: /^[A-Za-z0-9._~-]+$/ }),
   {
     type: 'string',
     minLength: 32,
@@ -215,7 +209,7 @@ export const projectSProblemCodes = [
   'INTERNAL_ERROR',
 ] as const;
 
-export const projectSProblemCodeNode = contractNode(z.enum(projectSProblemCodes), {
+export const projectSProblemCodeNode = contractNode(contractEnum(projectSProblemCodes), {
   type: 'string',
   enum: [...projectSProblemCodes],
 });
@@ -229,7 +223,7 @@ const retryActionValues = [
   'retry_after',
   'contact_support',
 ] as const;
-export const retryActionSchema = z.enum(retryActionValues);
+export const retryActionSchema = contractEnum(retryActionValues);
 const retryActionNode = contractNode(retryActionSchema, {
   type: 'string',
   enum: [...retryActionValues],
@@ -237,19 +231,19 @@ const retryActionNode = contractNode(retryActionSchema, {
 
 const fieldErrorNode = objectNode({
   code: optionalNode(
-    contractNode(z.string().min(1).max(64).regex(/^[A-Z0-9_]+$/), {
+    contractNode(contractString({ minLength: 1, maxLength: 64, pattern: /^[A-Z0-9_]+$/ }), {
       type: 'string',
       minLength: 1,
       maxLength: 64,
       pattern: '^[A-Z0-9_]+$',
     }),
   ),
-  message: contractNode(z.string().min(1).max(500), {
+  message: contractNode(contractString({ minLength: 1, maxLength: 500 }), {
     type: 'string',
     minLength: 1,
     maxLength: 500,
   }),
-  path: contractNode(z.string().min(1).max(256).regex(/^\/?[A-Za-z0-9_./-]+$/), {
+  path: contractNode(contractString({ minLength: 1, maxLength: 256, pattern: /^\/?[A-Za-z0-9_./-]+$/ }), {
     type: 'string',
     minLength: 1,
     maxLength: 256,
@@ -262,10 +256,10 @@ const alternativeNode = objectNode({
   startAt: isoInstantNode,
 });
 
-const retryNode = objectNode({
+export const projectSRetryNode = objectNode({
   action: retryActionNode,
   afterSeconds: optionalNode(
-    contractNode(z.number().int().nonnegative().max(86_400), {
+    contractNode(contractNumber({ integer: true, minimum: 0, maximum: 86_400 }), {
       type: 'integer',
       minimum: 0,
       maximum: 86_400,
@@ -277,20 +271,20 @@ export const projectSProblemNode = objectNode(
   {
     alternatives: optionalNode(arrayNode(alternativeNode, { maxItems: 3 })),
     code: projectSProblemCodeNode,
-    detail: contractNode(z.string().min(1).max(2_000), {
+    detail: contractNode(contractString({ minLength: 1, maxLength: 2_000 }), {
       type: 'string',
       minLength: 1,
       maxLength: 2_000,
     }),
     fieldErrors: optionalNode(arrayNode(fieldErrorNode, { maxItems: 32 })),
     requestId: requestIdNode,
-    retry: optionalNode(retryNode),
-    status: contractNode(z.number().int().min(400).max(599), {
+    retry: optionalNode(projectSRetryNode),
+    status: contractNode(contractNumber({ integer: true, minimum: 400, maximum: 599 }), {
       type: 'integer',
       minimum: 400,
       maximum: 599,
     }),
-    title: contractNode(z.string().min(1).max(200), {
+    title: contractNode(contractString({ minLength: 1, maxLength: 200 }), {
       type: 'string',
       minLength: 1,
       maxLength: 200,
@@ -313,14 +307,18 @@ export const projectSProblemEnvelopeNode = objectNode(
 export const projectSProblemEnvelopeSchema = projectSProblemEnvelopeNode.zod;
 export const projectSProblemEnvelopeJsonSchema = projectSProblemEnvelopeNode.jsonSchema;
 
-export const successEnvelopeNode = <TSchema extends z.ZodTypeAny>(
+type SuccessEnvelopeShape<TSchema extends z.ZodType> = {
+  readonly contractVersion: typeof contractVersionNode;
+  readonly data: ContractNode<TSchema>;
+  readonly requestId: typeof requestIdNode;
+};
+type SuccessEnvelopeParser<TSchema extends z.ZodType> =
+  ReturnType<typeof objectNode<SuccessEnvelopeShape<TSchema>>>['zod'];
+
+export const successEnvelopeNode = <TSchema extends z.ZodType>(
   data: ContractNode<TSchema>,
-): ContractNode<z.ZodObject<{
-  contractVersion: typeof contractVersionSchema;
-  data: TSchema;
-  requestId: typeof requestIdSchema;
-}, 'strict'>> =>
-  objectNode(
+): ContractNode<SuccessEnvelopeParser<TSchema>> =>
+  objectNode<SuccessEnvelopeShape<TSchema>>(
     {
       contractVersion: contractVersionNode,
       data,
@@ -329,13 +327,9 @@ export const successEnvelopeNode = <TSchema extends z.ZodTypeAny>(
     { title: 'ProjectSSuccessEnvelope' },
   );
 
-export const projectSSuccessEnvelopeSchema = <TSchema extends z.ZodTypeAny>(
+export const projectSSuccessEnvelopeSchema = <TSchema extends z.ZodType>(
   dataSchema: TSchema,
-) => z.object({
-  contractVersion: contractVersionSchema,
-  data: dataSchema,
-  requestId: requestIdSchema,
-}).strict();
+): SuccessEnvelopeParser<TSchema> => successEnvelopeNode(contractNode(dataSchema, {})).zod;
 
 export type ProjectSProblemCode = z.infer<typeof projectSProblemCodeSchema>;
 export type ProjectSProblem = z.infer<typeof projectSProblemSchema>;
@@ -353,7 +347,7 @@ export const projectSScopes = [
   'bookings:prepare',
   'bookings:create',
 ] as const;
-export const projectSScopeNode = contractNode(z.enum(projectSScopes), {
+export const projectSScopeNode = contractNode(contractEnum(projectSScopes), {
   type: 'string',
   enum: [...projectSScopes],
 });
@@ -366,7 +360,7 @@ export const actorKinds = [
   'service',
   'delegated_agent',
 ] as const;
-export const actorKindNode = contractNode(z.enum(actorKinds), {
+export const actorKindNode = contractNode(contractEnum(actorKinds), {
   type: 'string',
   enum: [...actorKinds],
 });
@@ -379,14 +373,14 @@ export const transportKinds = [
   'streamable_http_mcp',
   'internal',
 ] as const;
-export const transportNode = contractNode(z.enum(transportKinds), {
+export const transportNode = contractNode(contractEnum(transportKinds), {
   type: 'string',
   enum: [...transportKinds],
 });
 export const transportSchema = transportNode.zod;
 
 const boundedIdentifierNode = contractNode(
-  z.string().min(1).max(128).regex(/^[A-Za-z0-9._~:@/-]+$/),
+  contractString({ minLength: 1, maxLength: 128, pattern: /^[A-Za-z0-9._~:@/-]+$/ }),
   {
     type: 'string',
     minLength: 1,
@@ -394,7 +388,7 @@ const boundedIdentifierNode = contractNode(
     pattern: '^[A-Za-z0-9._~:@/-]+$',
   },
 );
-const hashNode = contractNode(z.string().regex(/^[a-f0-9]{64}$/), {
+const hashNode = contractNode(contractString({ pattern: /^[a-f0-9]{64}$/ }), {
   type: 'string',
   pattern: '^[a-f0-9]{64}$',
 });
@@ -405,14 +399,14 @@ const provenanceSourceValues = [
   'project_s_mcp',
   'internal',
 ] as const;
-const provenanceSourceNode = contractNode(z.enum(provenanceSourceValues), {
+const provenanceSourceNode = contractNode(contractEnum(provenanceSourceValues), {
   type: 'string',
   enum: [...provenanceSourceValues],
 });
 
 export const provenanceNode = objectNode({
   clientVersion: optionalNode(
-    contractNode(z.string().min(1).max(64), {
+    contractNode(contractString({ minLength: 1, maxLength: 64 }), {
       type: 'string',
       minLength: 1,
       maxLength: 64,
@@ -425,7 +419,7 @@ export const provenanceNode = objectNode({
 export const provenanceSchema = provenanceNode.zod;
 
 const confirmationMethodValues = ['human_browser', 'verified_challenge'] as const;
-const confirmationMethodNode = contractNode(z.enum(confirmationMethodValues), {
+const confirmationMethodNode = contractNode(contractEnum(confirmationMethodValues), {
   type: 'string',
   enum: [...confirmationMethodValues],
 });
@@ -433,7 +427,7 @@ const confirmationMethodNode = contractNode(z.enum(confirmationMethodValues), {
 export const confirmationGrantNode = objectNode({
   challengeId: optionalNode(
     contractNode(
-      z.string().min(8).max(128).regex(/^[A-Za-z0-9._~-]+$/),
+      contractString({ minLength: 8, maxLength: 128, pattern: /^[A-Za-z0-9._~-]+$/ }),
       {
         type: 'string',
         minLength: 8,
@@ -448,7 +442,7 @@ export const confirmationGrantNode = objectNode({
 });
 export const confirmationGrantSchema = confirmationGrantNode.zod;
 
-const scopesNode: ContractNode<z.ZodEffects<z.ZodArray<typeof projectSScopeSchema>>> =
+const scopesNode =
   contractNode(
     arrayNode(projectSScopeNode, { maxItems: projectSScopes.length }).zod.refine(
       (values) => new Set(values).size === values.length,
@@ -488,4 +482,4 @@ export type Provenance = z.infer<typeof provenanceSchema>;
 export type ConfirmationGrant = z.infer<typeof confirmationGrantSchema>;
 export type ExecutionContext = z.infer<typeof executionContextSchema>;
 
-export type AnyContractNode = ContractNode<z.ZodTypeAny>;
+export type AnyContractNode = ContractNode<z.ZodType>;

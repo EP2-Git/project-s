@@ -4,12 +4,17 @@ import {
   httpsOrLocalUrlNode,
   projectSProblemCodeSchema,
   projectSProblemNode,
+  projectSRetryNode,
   requestIdNode,
   retryActionSchema,
 } from '../common.js';
 import {
   arrayNode,
   contractNode,
+  contractObject,
+  contractEnum,
+  contractString,
+  contractTransform,
   objectNode,
   optionalNode,
   type JsonSchema,
@@ -32,17 +37,17 @@ export const v2ProblemCodes = [
   'RECEIPT_UNAVAILABLE',
   'AUTHORITY_BUSY',
 ] as const;
-export const v2ProblemCodeNode = contractNode(z.enum(v2ProblemCodes), {
+export const v2ProblemCodeNode = contractNode(contractEnum(v2ProblemCodes), {
   type: 'string',
   enum: [...v2ProblemCodes],
 });
 export const v2ProblemCodeSchema = v2ProblemCodeNode.zod;
 
 const v1Properties = projectSProblemNode.jsonSchema.properties as Record<string, JsonSchema>;
-const v1Shape = projectSProblemNode.zod.shape;
+const v1Shape = projectSProblemNode.shape;
 const v2RetryActionSchema = retryActionSchema.exclude(['confirm_in_browser']);
 const retryNode = contractNode(
-  v1Shape.retry.unwrap().extend({ action: v2RetryActionSchema }),
+  contractObject({ ...projectSRetryNode.shape, action: v2RetryActionSchema }),
   {
     ...v1Properties.retry,
     properties: {
@@ -53,7 +58,7 @@ const retryNode = contractNode(
 );
 // A clean URL parse gates the existing v1 scheme refinement, which assumes a
 // parseable URL. Invalid v2 wire input must report issues rather than throw.
-const safePublicUrlSchema = z.string().url().pipe(httpsOrLocalUrlNode.zod);
+const safePublicUrlSchema = contractString({ format: 'url' }).pipe(httpsOrLocalUrlNode.zod);
 
 const reviewUrlParts = (value: string): { url: URL; reviewId: string } | undefined => {
   let url: URL;
@@ -71,10 +76,18 @@ const reviewUrlParts = (value: string): { url: URL; reviewId: string } | undefin
 };
 
 export const v2StepUpReviewUrlNode = contractNode(
-  safePublicUrlSchema
-    .refine((value) => reviewUrlParts(value) !== undefined,
-      'Expected an exact authority review URL with one opaque review UUID.')
-    .transform((value) => {
+  contractTransform(contractString()
+    .superRefine((value, context) => {
+      const parsed = safePublicUrlSchema.safeParse(value);
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) context.addIssue({ ...issue });
+      }
+      // V3's dirty pipe still ran this check. Reapply it explicitly before the
+      // transform; v4 pipes otherwise abort after the first URL failure.
+      if (reviewUrlParts(value) === undefined) context.addIssue({
+        code: 'custom', message: 'Expected an exact authority review URL with one opaque review UUID.',
+      });
+    }), (value) => {
       const parts = reviewUrlParts(value)!;
       return `${parts.url.origin}/authority/review#review=${parts.reviewId}`;
     }),

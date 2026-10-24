@@ -8,6 +8,7 @@ import {
 import {
   BodyTooLargeError,
   PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES,
+  contractString,
   isoInstantSchema,
   prepareBookingInputSchema,
   preparedBookingSummarySchema,
@@ -110,11 +111,13 @@ const confirmationResultSchema = z
   })
   .strict();
 
-const supportEnvelopeSchema = <T extends z.ZodTypeAny>(data: T) =>
+type SupportSchema = typeof preparationPreviewSchema | typeof confirmationResultSchema;
+
+const supportEnvelopeSchema = (data: SupportSchema) =>
   z
     .object({
       contractVersion: z.literal(1),
-      requestId: z.string().min(8).max(128),
+      requestId: contractString({ minLength: 8, maxLength: 128 }),
       data,
     })
     .strict();
@@ -122,11 +125,21 @@ const supportEnvelopeSchema = <T extends z.ZodTypeAny>(data: T) =>
 export type PreparationPreview = z.infer<typeof preparationPreviewSchema>;
 export type ConfirmationResult = z.infer<typeof confirmationResultSchema>;
 
-const supportRequest = async <T>(
+async function supportRequest(
   path: string,
   body: unknown,
-  schema: z.ZodType<T>,
-): Promise<T> => {
+  schema: typeof preparationPreviewSchema,
+): Promise<PreparationPreview>;
+async function supportRequest(
+  path: string,
+  body: unknown,
+  schema: typeof confirmationResultSchema,
+): Promise<ConfirmationResult>;
+async function supportRequest(
+  path: string,
+  body: unknown,
+  schema: SupportSchema,
+): Promise<PreparationPreview | ConfirmationResult> {
   let response: Response;
   try {
     response = await fetch(`${env.projectSApiUrl.replace(/\/$/, '')}${path}`, {
@@ -167,8 +180,8 @@ const supportRequest = async <T>(
   }
   const parsed = supportEnvelopeSchema(schema).safeParse(payload);
   if (!parsed.success) throw asPublicBookingError(parsed.error);
-  return parsed.data.data as T;
-};
+  return parsed.data.data;
+}
 
 const withPublicErrors = async <T>(operation: () => Promise<T>): Promise<T> => {
   try {

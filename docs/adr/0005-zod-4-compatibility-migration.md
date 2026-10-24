@@ -1,6 +1,6 @@
 # ADR 0005: Zod 4 compatibility migration
 
-- **Status:** Proposed; not accepted or authorized for implementation
+- **Status:** Accepted for local implementation; publication and integration gates remain
 - **Date:** 2026-10-24
 - **Owner:** Ethan Patten, lead maintainer
 - **Issue/Discussion:** [prior PR 28 migration decision](https://github.com/EP2-Git/project-s/pull/28#issuecomment-6203932234), [migration RFC](../rfcs/zod-4-compatibility-migration.md)
@@ -15,16 +15,17 @@ clear the dependency finding. An automated Zod 4 bump fails contract compilation
 and does not establish compatibility.
 
 The repository previously required an RFC/ADR and parity process for this major
-migration. Current authorization permits a local proposal and compatibility
-tests. This proposed record does not approve implementation, publishing or
-merging. Explicit design review and implementation approval remain required.
+migration. On 2026-10-24, Ethan reviewed the recommended path and instructed
+"Go with the recommendation." This accepts the compatibility design and local
+implementation. Pushing, publishing, merging, deployment, alert dismissal and
+credential/security-setting changes remain outside this authorization.
 
-## Proposed decision
+## Decision
 
-Recommend a genuine patched Zod 4 runtime, evaluating 4.6.7 as the concrete
-candidate, with compatibility adapters wherever its behavior differs from
-Project S's existing contracts. Recheck the chosen version/advisories before
-implementation. Synchronize Node workspace declarations/lockfile, Edge imports
+Use genuine patched Zod 4.6.7 with compatibility adapters wherever its behavior
+differs from Project S's existing contracts. The local candidate also pins the
+compatible form resolver 5.2.2. Recheck versions/advisories before publication.
+Synchronize Node workspace declarations/lockfile, Edge imports
 and compiled package output; do not route application code through `zod/v3`.
 
 Preserve strict v1 and separate unavailable v2 wire acceptance, transform order,
@@ -56,8 +57,9 @@ commit rules remain unchanged. A parser accepting a context or object reference
 does not establish authority. V2 stays unavailable until its separate reviewed
 implementation and enablement gates are satisfied.
 
-The dependency audit remains high while the affected v3 runtime is installed.
-Proposal tests and extracted-package probes cannot resolve that finding.
+Main's affected v3 runtime remains vulnerable. The local candidate resolves
+4.6.7; passing local audits do not change remote installation or alert state.
+Proposal tests and extracted-package probes alone cannot resolve the finding.
 Migration must not weaken security gates or use a v3 fallback to obtain a build.
 
 ## Privacy and data impact
@@ -85,8 +87,8 @@ No new record, union, operation, route, MCP tool or Cloud behavior is introduced
 Bounded official-package probes confirm early rejection of excessive native v4
 collections, but also different emoji-length, UUID, unsafe-integer and issue
 behavior. A type-resolution-only target probe reports 24 compilation diagnostics
-against current contracts. These are measured migration blockers, not a migrated
-application. The RFC records separate baseline quirks such as v1's permissive
+against the historical unadapted contracts. These measured blockers explain
+the explicit source migration. The RFC records baseline quirks such as v1's permissive
 offsets and local-date year handling; corrections require separate review.
 
 ## Alternatives considered
@@ -102,14 +104,16 @@ offsets and local-date year handling; corrections require separate review.
 
 ## Migration and rollback
 
-First review the RFC/this proposed ADR, then obtain implementation approval.
 Migrate source, dependency declarations, lockfile and Edge resolution together
-in an isolated candidate. Do not publish or merge under proposal-only authority.
+in an isolated candidate. Local implementation approval does not authorize
+publishing or merging.
 
 Later rollback must restore a coherent dependency/source/import-map unit and
 rebuild workspace output. Restoring v3 restores its risk; restore/retain the
 resource mitigations as well. No data or authority state is changed by this
-proposal, and no release/deployment is authorized.
+local implementation, and no release/deployment is authorized. The
+[consumer migration guide](../zod-4-consumer-migration.md) records the resulting
+parser types, native diagnostics, supported adapters and coherent rollback.
 
 ## Verification
 
@@ -125,8 +129,8 @@ results, and state unavailable Docker/integration evidence explicitly.
 
 ## Consequences
 
-The proposed approach can remove the vulnerable runtime without silently
-changing Project S's contract, at the cost of explicit adapters and a documented
-TypeScript consumer migration. Compatibility and audit success remain to be
-demonstrated by an approved implementation. Authority, deployment and production
-readiness claims do not change.
+The local implementation replaces the vulnerable runtime with explicit
+adapters and a documented TypeScript consumer migration. Exact candidate
+compatibility, audit and integration results must accompany its review;
+unavailable checks remain gaps. Authority, deployment and production readiness
+claims do not change.

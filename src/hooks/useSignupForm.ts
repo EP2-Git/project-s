@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
@@ -7,23 +6,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { isUsernameAvailable } from '@/services/usernameService';
 import { getPostSignupDestination } from '@/lib/auth';
-
-const usernameSchema = z
-  .string()
-  .min(3, { message: 'Username must be at least 3 characters.' })
-  .max(30, { message: 'Username cannot exceed 30 characters.' })
-  .regex(/^[a-z0-9][a-z0-9_-]{2,29}$/, {
-    message: 'Use lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.',
-  });
-
-const formSchema = z.object({
-  fullName: z.string().trim().min(2, { message: 'Full name must be at least 2 characters.' }).max(120, { message: 'Full name cannot exceed 120 characters.' }),
-  email: z.string().trim().max(320, { message: 'Email cannot exceed 320 characters.' }).email({ message: 'Please enter a valid email address.' }),
-  username: usernameSchema,
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-});
-
-export type SignupFormValues = z.infer<typeof formSchema>;
+import {
+  signupFormSchema,
+  signupUsernameSchema,
+  type SignupFormValues,
+} from '@/types/signupForm';
+export type { SignupFormValues } from '@/types/signupForm';
 
 export function useSignupForm() {
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +21,7 @@ export function useSignupForm() {
   const navigate = useNavigate();
 
   const form = useForm<SignupFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(signupFormSchema),
     defaultValues: {
       fullName: '',
       email: '',
@@ -46,7 +34,7 @@ export function useSignupForm() {
   const usernameValue = form.watch('username');
 
   useEffect(() => {
-    if (!usernameSchema.safeParse(usernameValue).success) {
+    if (!signupUsernameSchema.safeParse(usernameValue).success) {
       setIsCheckingUsername(false);
       setIsUsernameTaken(false);
       return;

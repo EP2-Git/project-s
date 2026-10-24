@@ -12,7 +12,7 @@ ADR is the durable repository record.
 | [0002](0002-tailwind-4-build-toolchain.md) | Accepted for implementation | Tailwind 4 build toolchain and browser styling compatibility. |
 | [0003](0003-authority-provider-bounded-mandates.md) | Accepted foundation; implementation gated | Authority providers and guest-side bounded mandates; D1-D5 and remaining implementation-design gates. |
 | [0004](0004-bounded-mandate-implementation.md) | Accepted for implementation; proof and enablement gated | Concrete C1-C4 credential, step-up, synthetic retention and locking choices. |
-| [0005](0005-zod-4-compatibility-migration.md) | Proposed; implementation gated | Zod 4 migration preserving wire behavior, normalization and contract artifacts. |
+| [0005](0005-zod-4-compatibility-migration.md) | Accepted for local implementation; publication and integration gated | Zod 4 migration preserving wire behavior, normalization and contract artifacts. |
 
 The [public booking capability ledger](public-booking-capability-ledger.md)
 tracks the current four-operation contract and is reviewed alongside ADR 0001.

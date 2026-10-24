@@ -197,7 +197,7 @@ const contextFor = async (
   return executionContextSchema.parse(context);
 };
 
-const corsHeadersFor = (request: Request) => {
+const corsHeadersFor = (request: Request): Record<string, string> => {
   const origin = request.headers.get('origin');
   if (!origin) return {};
   if (!allowedOrigins.has(origin)) {
@@ -223,7 +223,7 @@ const responseJson = (
   status: number,
   cors: Record<string, string>,
   extraHeaders: Record<string, string> = {},
-  mediaType = PROJECT_S_CONTRACT_MEDIA_TYPE,
+  mediaType: string = PROJECT_S_CONTRACT_MEDIA_TYPE,
 ) =>
   new Response(JSON.stringify(body), {
     status,
@@ -446,7 +446,7 @@ const challengeConfirmation = async (
 };
 
 Deno.serve(async (request) => {
-  let requestId = crypto.randomUUID();
+  let requestId: string = crypto.randomUUID();
   let cors: Record<string, string> = {};
   try {
     cors = corsHeadersFor(request);

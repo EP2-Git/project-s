@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { contractNode } from '../schema.js';
+import { contractLiteral, contractNode, contractNumber, contractString, contractTransform } from '../schema.js';
 
 // The wire grammar preserves the reviewed v1-shaped offsets and up to six
 // fractional digits. Date is used only for exact whole-second UTC arithmetic;
@@ -61,13 +61,13 @@ export const compareV2Instants = (left: string, right: string): -1 | 0 | 1 => {
   return leftMicroseconds < rightMicroseconds ? -1 : leftMicroseconds > rightMicroseconds ? 1 : 0;
 };
 
-export const v2ContractVersionNode = contractNode(z.literal(2), {
+export const v2ContractVersionNode = contractNode(contractLiteral(2), {
   type: 'integer',
   const: 2,
 });
 export const v2ContractVersionSchema = v2ContractVersionNode.zod;
 
-export const v2UuidNode = contractNode(z.string().length(36).uuid().transform((value) => value.toLowerCase()), {
+export const v2UuidNode = contractNode(contractTransform(contractString({ length: 36, format: 'uuid' }), (value) => value.toLowerCase()), {
   type: 'string',
   format: 'uuid',
   minLength: 36,
@@ -76,14 +76,14 @@ export const v2UuidNode = contractNode(z.string().length(36).uuid().transform((v
 });
 export const v2UuidSchema = v2UuidNode.zod;
 
-export const v2RevisionNode = contractNode(z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), {
+export const v2RevisionNode = contractNode(contractNumber({ integer: true, minimum: 1, maximum: Number.MAX_SAFE_INTEGER }), {
   type: 'integer',
   minimum: 1,
   maximum: Number.MAX_SAFE_INTEGER,
 });
 export const v2RevisionSchema = v2RevisionNode.zod;
 
-export const v2DigestNode = contractNode(z.string().length(64).regex(/^[a-f0-9]{64}$/), {
+export const v2DigestNode = contractNode(contractString({ length: 64, pattern: /^[a-f0-9]{64}$/ }), {
   type: 'string',
   minLength: 64,
   maxLength: 64,
@@ -92,11 +92,11 @@ export const v2DigestNode = contractNode(z.string().length(64).regex(/^[a-f0-9]{
 export const v2DigestSchema = v2DigestNode.zod;
 
 export const v2InstantNode = contractNode(
-  z.string().transform((value, context) => {
+  contractString().transform((value, context) => {
     try {
       return canonicalizeV2Instant(value);
     } catch {
-      context.addIssue({ code: z.ZodIssueCode.custom, message: invalidInstant().message });
+      context.addIssue({ code: z.ZodIssueCode.custom, message: invalidInstant().message, continue: true });
       return z.NEVER;
     }
   }),

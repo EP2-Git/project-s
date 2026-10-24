@@ -1,8 +1,9 @@
 # Zod collection and transport resource limits
 
-Status: local remediation candidate, 2026-10-24. No release or deployment is
-implied. This is an application mitigation; the Zod dependency advisory remains
-open while the affected dependency version is retained.
+Status: local mitigation and approved Zod 4 migration candidate, 2026-10-24.
+No release or deployment is implied. The candidate now resolves genuine Zod
+4.6.7 in Node and Edge. Main and GitHub alert state remain separate; no alert
+has been dismissed or remotely changed.
 
 ## Verified advisory and compatibility decision
 
@@ -24,14 +25,17 @@ old behavior. A package upgrade followed by v3 subpath imports is not a fix.
 [fails contracts compilation](https://github.com/EP2-Git/project-s/actions/runs/40019733125)
 because v4 changes `ZodEffects` and `ZodObject` typing. Downstream browser checks
 were skipped. The [prior migration decision](https://github.com/EP2-Git/project-s/pull/28#issuecomment-6203932234)
-requires the RFC/ADR and parity process for a Zod 4 migration. This candidate
-retains v3 and mitigates the application's concrete boundaries instead.
+requires the RFC/ADR and parity process for a Zod 4 migration. The first local
+unit retained v3 and mitigated concrete boundaries. Ethan subsequently approved
+the recommended migration locally; the current candidate adds compatibility
+adapters and the patched runtime rather than merging the automated bump.
 
-Node's root/contracts/SDK resolve Zod 3.25.76 from the lockfile. Edge independently
-resolves `npm:zod@3.25.76` through `supabase/functions/api-v1/deno.json`. The same
+Node's root/contracts/SDK now resolve Zod 4.6.7 from the lockfile. Edge independently
+resolves `npm:zod@4.6.7` through `supabase/functions/api-v1/deno.json`. The same
 compiled contracts and body reader execute in both runtimes. Dependency
 declarations, actual runtime resolution and application mitigation are distinct
-evidence; this change does not make `npm audit` report a patched version.
+evidence. Both full and production audits must be rerun against this actual
+installed candidate; proposal probes alone cannot establish remediation.
 
 ## Exposure and implementation
 
@@ -41,15 +45,15 @@ exploit against this application or any deployed service was established.
 Response arrays and internal context scopes do use Zod. An SDK endpoint's
 response is untrusted data, regardless of its HTTP success status.
 
-`arrayNode` now constructs a private Zod 3 array subclass. Its `_parse` checks
-the raw array length against existing maximum/exact upper bounds and returns
-one ordinary `too_big` issue before any child parser, transform, refinement or
-async task runs. Otherwise it delegates to the original parser. The scopes
-schema also uses this builder. The array API, inferred input/output types,
-minimum sizes, normalization, strict objects, optional/nullable composition and
-ordinary error maps remain intact. Deriving `min`, `max`, `length`, `nonempty`
-or `describe` retains the guard. Sets/maps remain invalid array input types;
-the application has no Zod set/map fields.
+The initial `arrayNode` mitigation used a private Zod 3 array subclass. The
+approved migration removes that subclass and installs patched native v4
+maximum/exact bounds before any child parser, transform, refinement or async
+task. The scopes schema also uses this builder. Excessive input yields one
+ordinary `too_big` issue. Domain input/output types, minimum sizes,
+normalization, strict objects and optional/nullable composition remain tested.
+Derived bounds and sync/async paths are covered. Sets/maps remain invalid array
+input types; the application has no Zod set/map fields. Native set/map leading
+bounds are separately tested, including zero key/value validator work.
 
 The existing limits remain: 100 meeting types, 2,000 slots, 32 field errors,
 three alternatives and the existing scope count. Invalid oversized arrays now
@@ -117,51 +121,55 @@ listening services or database writes. Standalone Deno proof is not the bundled
 Supabase Edge Runtime or a deployed-service test. The four-operation golden
 suite and v1/v2 artifact digest pins remain unchanged.
 
-At local validation, build/typechecks, units/SDK/parity and focused coverage
-passed; the aggregate `check` stopped at its unchanged production audit gate
-with the known high Zod advisory. Full standalone Deno 2.9.8 entrypoint checking
-also reports 28 errors reproduced on unchanged main, including compiled-JS
-type exports and CORS inference. The resource vectors pass in that runtime.
-Local Docker is unavailable, so live Edge/DB, pgTAP, concurrency and full browser
-booking checks are not claimed. These gaps cannot be called a green pipeline.
+The historical mitigated-v3 validation passed build/typechecks, units/SDK/parity
+and focused coverage, then stopped at its known high production audit finding.
+The approved v4 candidate must pass the same gates without changing thresholds.
+Strict full Deno entrypoint checking is required in addition to focused resource
+vectors. The migration repairs compiled declaration linkage and narrow literal
+inference that produced 28 errors on unchanged main, without waiving checking.
+Record exact candidate results separately. When Docker is unavailable, live
+Edge/DB, pgTAP, concurrency and complete browser booking evidence remain gaps;
+they cannot be called a green pipeline.
 
-The affected version remains installed and the alert remains open. A reviewed
-Zod migration or a genuine upstream-compatible patched release is still needed
-to clear the dependency finding without weakening audit policy. This mitigation
+The remote alert remains open until an authorized integrated change is detected;
+a passing local audit does not dismiss it. The candidate migration does not
+weaken audit policy. This mitigation
 does not impose global service memory, time, rate or concurrency budgets. Fetch
 or a custom stream may allocate an incoming chunk before the reader receives
 it. Unrelated provider fetches and the MCP line reader are not rewritten.
 
-## Proposed dependency migration
+## Approved local dependency migration
 
 The [Zod 4 migration RFC](rfcs/zod-4-compatibility-migration.md) and
-[ADR 0005](adr/0005-zod-4-compatibility-migration.md) are **proposed** for review.
-The current authorization covers the mitigation, proposal and local tests;
-production dependencies, the lockfile and Edge import map remain unchanged.
-The proposal needs explicit review before implementing the dependency migration.
+[ADR 0005](adr/0005-zod-4-compatibility-migration.md) were accepted for local
+implementation on 2026-10-24. The candidate synchronizes manifests, lockfile and
+Edge map at 4.6.7, with the required compatible form resolver. See the
+[consumer migration guide](zod-4-consumer-migration.md) for source-type and native
+diagnostic changes. Pushing, merging and deployment remain unauthorized.
 
 `tests/parity/migration-compatibility.test.mjs` freezes actual v1/v2 acceptance,
 normalization and error boundaries in Node and standalone Deno. Separately,
 `npm run probe:zod-migration` inspects a small, bounded raw-library sample. Pass
 `-- --candidate-dir <absolute-package-directory> --expected-version 4.6.7` to
-inspect a verified, externally unpacked official candidate without installing
-it in the application. The probe has no downloader or dependency mutation.
+inspect a separately verified, externally unpacked package. The default now
+inspects installed 4.6.7. The probe has no downloader or dependency mutation.
 Its passing result demonstrates the sampled upstream fix, not an application
 migration or complete parity. Both versions leave unbounded collections
 unbounded; the v3 subpath is not an acceptable workaround.
 
 Side-by-side observations of 3.25.76 and official 4.6.7 confirm changed UUID,
 Unicode length, integer and diagnostic semantics. A separate no-emit TypeScript
-resolution probe passes against current v3 and reports 24 diagnostics against
-v4, including the removed effects type, object generics and temporary v3 array
-internals. The migration must deliberately replace those internals, preserve
-wire behavior and document exposed Zod parser type changes. Neither the raw
-probe nor the baseline suite claims this implementation already exists.
+resolution probe passed against the old v3 baseline and reported 24 diagnostics
+against unadapted v4, including effects/object types and private array internals.
+Those historical blockers explain the explicit migration rather than a routine
+bump. Current application build/parity evidence must come from the actual
+migrated source and installed runtime, not those old probes.
 
 ## Rollback
 
-Revert this focused candidate as one unit, then run `npm run build:packages` to
-replace ignored compiled workspace output and rerun the existing tests. There
-are no SQL migrations, data changes or credential changes to roll back. Revert
-also removes the collection early-abort and streamed byte protections; retain
-the advisory/open-risk record and avoid representing that state as remediated.
+Revert the v4 migration coherently to the mitigated `6679ce1` baseline, run
+`npm ci` and `npm run build:packages`, and rerun parity/body-limit checks.
+That restores affected v3 and its audit failure; retain the earlier raw-array
+guard and streamed byte protections. There are no SQL/data or credential
+changes to reverse. Reverting the entire mitigation to unprotected main would
+also remove those protections and must not be represented as remediation.

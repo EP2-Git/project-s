@@ -226,7 +226,7 @@ export class ProjectSClient {
     });
   }
 
-  async #request<TSchema extends z.ZodTypeAny>(
+  async #request<TSchema extends z.ZodType>(
     method: 'GET' | 'POST',
     path: string,
     body: unknown,

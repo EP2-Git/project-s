@@ -7,6 +7,6 @@
     "@project-s/application": "../../../packages/application/dist/index.js",
     "@project-s/contracts": "../../../packages/contracts/dist/index.js",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.112.3",
-    "zod": "npm:zod@3.25.76"
+    "zod": "npm:zod@4.6.7"
   }
 }

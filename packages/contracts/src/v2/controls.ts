@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { bookerNode, emailNode, ianaTimeZoneNode } from '../common.js';
-import { contractNode, objectNode } from '../schema.js';
+import { contractLiteral, contractNode, contractString, objectNode } from '../schema.js';
 import { v2MandateApproveInputNode, v2SuccessEnvelopeNode } from './operations.js';
 import {
   v2InstantNode,
@@ -12,7 +12,7 @@ import {
 
 // Strict, unavailable principal-control shapes only. Parsing does not verify an
 // account, object ownership, approval, durable revocation or retention cleanup.
-const actorLabelNode = contractNode(z.string().trim().min(1).max(80), {
+const actorLabelNode = contractNode(contractString({ trim: true, minLength: 1, maxLength: 80 }), {
   type: 'string',
   minLength: 1,
   maxLength: 80,
@@ -37,13 +37,13 @@ export const v2ActorRevokeInputSchema = v2ActorRevokeInputNode.zod;
 export const v2ActorRevokedDataNode = objectNode({
   actorId: v2UuidNode,
   revision: v2RevisionNode,
-  state: contractNode(z.literal('revoked'), { type: 'string', const: 'revoked' }),
+  state: contractNode(contractLiteral('revoked'), { type: 'string', const: 'revoked' }),
   revokedAt: v2InstantNode,
 }, { title: 'V2ActorRevokedData' });
 export const v2ActorRevokedDataSchema = v2ActorRevokedDataNode.zod;
 
 const reviewedNameNode = contractNode(
-  bookerNode.zod.shape.name,
+  bookerNode.shape.name,
   (bookerNode.jsonSchema.properties as Record<string, Record<string, unknown>>).name,
 );
 export const v2BookerProfileCreateInputNode = objectNode({
@@ -83,7 +83,7 @@ export const v2BookerProfileDeleteInputSchema = v2BookerProfileDeleteInputNode.z
 
 export const v2BookerProfileDeletedDataNode = objectNode({
   profileId: v2UuidNode,
-  state: contractNode(z.literal('deleted'), { type: 'string', const: 'deleted' }),
+  state: contractNode(contractLiteral('deleted'), { type: 'string', const: 'deleted' }),
   deletedAt: v2InstantNode,
 }, { title: 'V2BookerProfileDeletedData', description: 'A parsed acknowledgement does not prove atomic dependent-policy invalidation or PII removal.' });
 export const v2BookerProfileDeletedDataSchema = v2BookerProfileDeletedDataNode.zod;
@@ -96,7 +96,7 @@ export const v2MandateRevokeInputSchema = v2MandateRevokeInputNode.zod;
 export const v2MandateRevokedDataNode = objectNode({
   mandateId: v2UuidNode,
   revision: v2RevisionNode,
-  state: contractNode(z.literal('revoked'), { type: 'string', const: 'revoked' }),
+  state: contractNode(contractLiteral('revoked'), { type: 'string', const: 'revoked' }),
   revokedAt: v2InstantNode,
 }, { title: 'V2MandateRevokedData' });
 export const v2MandateRevokedDataSchema = v2MandateRevokedDataNode.zod;
@@ -110,7 +110,7 @@ export const v2StepUpApproveInputSchema = v2StepUpApproveInputNode.zod;
 
 export const v2StepUpApprovedDataNode = objectNode({
   reviewId: v2UuidNode,
-  state: contractNode(z.literal('approved'), { type: 'string', const: 'approved' }),
+  state: contractNode(contractLiteral('approved'), { type: 'string', const: 'approved' }),
   preparationId: v2UuidNode,
   expiresAt: v2InstantNode,
 }, {
@@ -126,7 +126,7 @@ export const v2StepUpRevokeInputSchema = v2StepUpRevokeInputNode.zod;
 
 export const v2StepUpRevokedDataNode = objectNode({
   reviewId: v2UuidNode,
-  state: contractNode(z.literal('revoked'), { type: 'string', const: 'revoked' }),
+  state: contractNode(contractLiteral('revoked'), { type: 'string', const: 'revoked' }),
   revision: v2RevisionNode,
   revokedAt: v2InstantNode,
 }, { title: 'V2StepUpRevokedData' });

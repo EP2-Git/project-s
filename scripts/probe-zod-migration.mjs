@@ -95,7 +95,7 @@ const rawError = z.object({ name: z.string(), id: z.string().uuid() }).strict().
 assert.equal(rawError.success, false);
 const report = {
   purpose: 'Bounded raw-library observations and upstream-fix assertions only',
-  productionMigrated: false,
+  applicationCompatibilityEvidence: false,
   package: { name: metadata.name, version: metadata.version, directory: dirname(packageFile) },
   collections,
   nested: { childVisits: nestedVisits, firstIssuePath: nestedResult.error.issues[0].path },

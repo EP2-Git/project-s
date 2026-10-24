@@ -1,27 +1,34 @@
 # RFC: Zod 4 compatibility migration
 
-- **Status:** Proposed; not accepted or authorized for implementation
+- **Status:** Accepted for local implementation; publication and integration gates remain
 - **Date:** 2026-10-24
 - **Decision owner:** Ethan Patten, lead maintainer
-- **Companion:** [proposed ADR 0005](../adr/0005-zod-4-compatibility-migration.md)
-- **Source baseline:** `9299b4338a238e30fa00f0b2d897ef68c3122711` on `codex/zod-resource-limits`
+- **Companion:** [ADR 0005](../adr/0005-zod-4-compatibility-migration.md)
+- **Implementation baseline:** `6679ce1297fea37e61bf924535036647d4ce5779` on `codex/zod-resource-limits`
 - **Scope:** dependency/runtime migration preserving existing Project S contracts
 
-The current authorization covers this local proposal and compatibility tests.
-It does not approve changing dependency declarations, runtime imports, production
-schemas or generated pins. Design review and explicit implementation approval
-are required before that work begins. Publication and merging are separate from
-this local preparation.
+On 2026-10-24 Ethan reviewed the recommended path and instructed "Go with the
+recommendation." This accepts local implementation of the compatibility design,
+including genuine patched Zod 4, synchronized Node/Edge resolution and the
+documented exported parser type/diagnostic migration. Public behavior and artifact
+pins remain frozen. Pushing, publishing, merging, deployment, alert dismissal and
+credential/security-setting changes remain outside this authorization.
+
+The local candidate now pins genuine **Zod 4.6.7** in Node and Edge and
+**@hookform/resolvers 5.2.2** for forms. See the
+[consumer migration guide](../zod-4-consumer-migration.md) for the implemented
+adapters and source API changes. The observations below retain the historical
+v3 baseline; they are not a description of the candidate's installed runtime.
 
 ## Problem and existing evidence
 
 [The resource-limit investigation](../zod-resource-limits.md) records the high
 Zod advisory, the application's early collection guards and streamed byte
-limits, and the remaining audit failure. Those mitigations retain Zod 3.25.76;
+limits, and the baseline audit failure. Those earlier mitigations retained Zod 3.25.76;
 they do not turn it into a patched dependency. The documented first patched
-version is 4.6.6. Evaluate **4.6.7** as the concrete migration candidate, with
-its registry integrity and patched implementation verified during preparation;
-recheck advisories before any later implementation.
+version is 4.6.6. The selected **4.6.7** registry integrity and patched
+implementation were verified during preparation. Recheck advisories before
+later publication or integration.
 
 The [PR 28 decision](https://github.com/EP2-Git/project-s/pull/28#issuecomment-6203932234)
 already classified this as a public-contract compatibility migration requiring
@@ -30,18 +37,20 @@ version bump alone fails contracts compilation in the later PR 54 candidate.
 Neither that failure nor a green isolated library probe establishes application
 compatibility.
 
-Existing Node imports resolve the root, contracts and SDK declarations through
-the lockfile. Edge separately maps `zod` to `npm:zod@3.25.76` in
+Baseline Node imports resolved the root, contracts and SDK declarations through
+the lockfile. Edge separately mapped `zod` to `npm:zod@3.25.76` in
 `supabase/functions/api-v1/deno.json`. Browser form resolvers and support-response
 validators also consume Zod. A successful contracts-only rewrite would leave
 these consumers unproven.
 
-## Measured proposal probes
+## Historical proposal probes
 
 The bounded [raw-library probe](../../scripts/probe-zod-migration.mjs) compares
-installed 3.25.76 with an externally extracted official 4.6.7 package whose
+the historical installed 3.25.76 with an externally extracted official 4.6.7 package whose
 registry integrity was checked. It does not install that package into the
-application. Reports explicitly set `productionMigrated: false`. The same raw
+application. Those historical reports set `productionMigrated: false`; the
+current probe uses `applicationCompatibilityEvidence: false` to distinguish
+library observations from the application's separate test suites. The same raw
 target probe also passed in standalone Deno 2.9.8; it did not change that
 runtime's application import map or exercise the Supabase Edge entrypoint.
 
@@ -82,10 +91,10 @@ with **24 TypeScript diagnostics**, including Effects/Object annotations and
 the temporary v3 subclass's private parser APIs. This measures a compile blocker;
 it is not a migrated build or a substitute for runtime compatibility tests.
 
-Reproduce the installed raw baseline without changing application imports:
+Inspect the current installed raw runtime without changing application imports:
 
 ```sh
-node scripts/probe-zod-migration.mjs --expected-version 3.25.76
+node scripts/probe-zod-migration.mjs --expected-version 4.6.7
 ```
 
 For a separately verified extracted candidate, provide `--candidate-dir` with
@@ -93,6 +102,9 @@ its absolute package directory and `--expected-version 4.6.7`; `--report` is an
 optional output path. Version assertions and bounded fixtures must remain
 enabled. Do not use a candidate probe as evidence that production resolution,
 Edge, SQL or the browser application has migrated.
+To reproduce the historical v3 control, use a separately preserved 3.25.76
+package directory with its matching expected version; do not reinstall v3 into
+the migration candidate.
 
 ## Recommended compatibility boundary
 
@@ -139,8 +151,9 @@ or treat a raw-code change as permission to rewrite public error expectations.
 ## Concrete migration map
 
 The [official migration guide](https://zod.dev/v4/changelog) explains the changed
-type/error model. The proposed edits below are specific to current repository
-usage; they are not changes made by this RFC.
+type/error model. The original implementation map below records the review
+requirements. The linked consumer guide describes the resulting supported
+adapters, including guarded objects and transform continuation behavior.
 
 | Current usage | Proposed implementation and required evidence |
 | --- | --- |
@@ -209,16 +222,16 @@ not remediation.
 
 ## Stages and gates
 
-1. **Proposal and baseline, authorized now.** Freeze synthetic compatibility
+1. **Proposal and baseline, completed.** Freeze synthetic compatibility
    vectors, inferred-type assertions, resource tests, generated pins and current
    runtime-resolution evidence. Run the proposal harness against the installed
    baseline. A separately identified official-package probe may measure target
    differences without altering application resolution. Record results and
    unavailable checks; do not call this a migrated application.
-2. **Design review, then implementation approval.** Ethan reviews this RFC/ADR,
-   including source-type impact, format/length adapters and error projection.
-   Only then undertake the dependency and source migration in an isolated
-   branch. Design acceptance alone is not a green implementation.
+2. **Design review and local implementation approval, completed.** Ethan accepted
+   the recommended path on 2026-10-24, including source-type impact,
+   format/length adapters and error projection. The migration is isolated in
+   `codex/zod-4-compatibility`. Acceptance alone is not a green implementation.
 3. **One coherent runtime migration.** Synchronize root/contracts/SDK dependency
    declarations, lockfile and Edge import map to the reviewed patched release;
    rebuild ignored workspace output. Verify actual Node and Deno resolution and
@@ -252,22 +265,22 @@ Edge typecheck/full migration gate. Preserve the distinction between standalone
 Deno, bundled local Supabase Edge Runtime and hosted CI. Docker-unavailable SQL
 or browser integration is a gap, never a passing result.
 
-The installed v3 dependency remains vulnerable and the production audit remains
-high until a genuine reviewed migration changes actual resolution and both
-audits are rerun. Do not update the risk record to "resolved" because proposal
-tests, an extracted package probe or application mitigations pass.
+The historical v3 dependency remains vulnerable. The local candidate changes
+actual resolution to 4.6.7 and requires both full and production audits to pass.
+This does not change the installed version on main or close GitHub's alert;
+remote state and exact-candidate hosted pipeline evidence remain separate.
 
-## Rollback and decision requested
+## Rollback and remaining gates
 
-The proposal changes no production dependency, schema, database or credential.
-Its tests and documents can be removed without changing authority. A later
-implementation must be reversible as a single dependency/source/import-map
-unit, followed by clean install/rebuild and parity tests; reverting restores
-the vulnerable baseline and must be reported as such. No rollback may remove
-existing resource guards until the reverted runtime is protected again.
+The migration changes local dependencies, source adapters and the Edge import
+map as one coherent unit; it changes no database or credential. Revert that
+unit to the mitigated `6679ce1` baseline, clean install/rebuild and rerun parity
+tests. That rollback restores the vulnerable dependency and failing audit;
+retain the earlier raw collection guard and streamed body protections. Do not
+revert all the way to unmitigated main as an unnoticed security rollback.
 
-The recommendation for review is a patched **v4 runtime with explicit
-compatibility adapters**, preserving existing wire and normalized domain
-behavior while documenting parser-type migration. Remaining decisions concern
-this technical migration and any demonstrated incompatibility; this proposal
-does not reopen accepted authority designs or authorize unrelated product work.
+The accepted path is a patched **v4 runtime with explicit compatibility
+adapters**, preserving existing wire and normalized domain behavior while
+documenting parser-type migration. Remaining work is validation and integration
+review, including explicitly unavailable checks. No publication is authorized;
+this decision does not reopen authority designs or permit unrelated product work.

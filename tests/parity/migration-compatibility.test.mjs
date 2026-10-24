@@ -1,32 +1,42 @@
 import assert from 'node:assert/strict';
 import {
   bookerSchema,
+  createBookingDataSchema,
   descriptionNode,
   displayNameNode,
   executionContextSchema,
   getBookingPageInputSchema,
+  getBookingPageDataSchema,
   isoInstantSchema,
   localDateSchema,
   prepareBookingInputSchema,
+  prepareBookingDataSchema,
+  preparedBookingSummarySchema,
   projectSScopes,
   titleNode,
   uuidSchema,
 } from '@project-s/contracts';
 import {
   v2CreateBookingInputSchema,
+  v2ActorContextSchema,
   v2InstantSchema,
+  v2PrincipalContextSchema,
   v2PrepareBookingInputSchema,
+  v2ProblemEnvelopeSchema,
+  v2ProblemStepUpSchema,
+  v2StepUpReviewUrlSchema,
   v2UuidSchema,
 } from '../../packages/contracts/dist/v2/index.js';
 import {
   ProjectSApplication,
   ProjectSApplicationError,
 } from '@project-s/application';
+import { goldenParityVectors } from './golden-vectors.mjs';
 
-// Freeze actual Project S behavior for a future migration. These fixtures run
-// against the current schemas; passing them does not demonstrate Zod 4 support.
-// Raw issue codes also record the v3 parser API. Any approved v4 diagnostic API
-// change must be reviewed separately from unchanged public field-error messages.
+// Freeze actual Project S behavior during the reviewed v4 migration. Native
+// invalid_string/invalid_enum_value diagnostics became invalid_format/
+// invalid_value as an explicitly reviewed parser API change. Paths and the
+// separately asserted public field-error messages remain frozen.
 const test = globalThis.Deno?.test
   ? globalThis.Deno.test.bind(globalThis.Deno)
   : (await import('node:test')).default;
@@ -91,6 +101,17 @@ for (const [label, schema, maximum] of [
     assert.deepEqual(issuesOf(schema.safeParse(loneSurrogates + '\ud800')), [
       { code: 'too_big', path: [] },
     ]);
+    for (const atCodeUnitBoundary of [
+      'a'.repeat(maximum - 2) + '🧭',
+      '\udc00'.repeat(maximum),
+      'e\u0301'.repeat(maximum / 2),
+    ]) {
+      assert.equal(atCodeUnitBoundary.length, maximum);
+      assert.equal(schema.parse(atCodeUnitBoundary), atCodeUnitBoundary);
+      assert.deepEqual(issuesOf(schema.safeParse(atCodeUnitBoundary + 'a')), [
+        { code: 'too_big', path: [] },
+      ]);
+    }
     if (label === 'description') {
       assert.equal(schema.parse(null), null);
       assert.equal(schema.parse(' \t\n '), '');
@@ -120,6 +141,31 @@ test('migration baseline: booker ASCII-space normalization preserves internal no
   assert.deepEqual(prepareBookingInputSchema.parse(input).booker, normalized);
 });
 
+test('migration compatibility: booker regex boundaries preserve code units and transform order', async () => {
+  const maximumName = '🧭'.repeat(60);
+  const maximumNotes = '\udc00'.repeat(2_000);
+  const input = {
+    name: '  ' + maximumName + '  ',
+    email: '  GUEST@EXAMPLE.INVALID  ',
+    notes: '  ' + maximumNotes + '  ',
+  };
+  const expected = { name: maximumName, email: 'guest@example.invalid', notes: maximumNotes };
+  assert.deepEqual(bookerSchema.parse(input), expected);
+  assert.deepEqual(await bookerSchema.parseAsync(input), expected);
+  assert.deepEqual(issuesOf(bookerSchema.safeParse({ ...input, name: maximumName + 'a' })), [
+    { code: 'invalid_format', path: ['name'] },
+  ]);
+  assert.deepEqual(issuesOf(bookerSchema.safeParse({ ...input, notes: maximumNotes + 'a' })), [
+    { code: 'invalid_format', path: ['notes'] },
+  ]);
+  // The legacy name grammar requires two UTF-16 units, rather than two Unicode
+  // code points. These distinct outcomes must survive the library migration.
+  assert.equal(bookerSchema.parse({ ...booker, name: '🧭' }).name, '🧭');
+  assert.deepEqual(issuesOf(bookerSchema.safeParse({ ...booker, name: 'A' })), [
+    { code: 'invalid_format', path: ['name'] },
+  ]);
+});
+
 test('migration baseline: booker controls fail at the existing field paths', () => {
   for (const [field, value] of [
     ['name', '\tGuest Example\t'],
@@ -129,7 +175,7 @@ test('migration baseline: booker controls fail at the existing field paths', () 
     ['notes', '\tHidden tab'],
   ]) {
     assert.deepEqual(issuesOf(bookerSchema.safeParse({ ...booker, [field]: value })), [
-      { code: 'invalid_string', path: [field] },
+      { code: 'invalid_format', path: [field] },
     ]);
   }
 });
@@ -208,8 +254,8 @@ test('migration baseline: issue codes and application field paths preserve safe 
     principalId: syntheticPrivateValue,
   };
   assert.deepEqual(issuesOf(prepareBookingInputSchema.safeParse(invalid)), [
-    { code: 'invalid_string', path: ['booker', 'email'] },
-    { code: 'invalid_string', path: ['booker', 'name'] },
+    { code: 'invalid_format', path: ['booker', 'email'] },
+    { code: 'invalid_format', path: ['booker', 'name'] },
     { code: 'unrecognized_keys', path: ['booker'] },
     { code: 'unrecognized_keys', path: [] },
   ]);
@@ -250,7 +296,7 @@ test('migration baseline: issue codes and application field paths preserve safe 
   });
   const invalidUuid = { ...prepareInput, meetingTypeId: 'invalid' };
   assert.deepEqual(issuesOf(prepareBookingInputSchema.safeParse(invalidUuid)), [
-    { code: 'invalid_string', path: ['meetingTypeId'] },
+    { code: 'invalid_format', path: ['meetingTypeId'] },
   ]);
   await assert.rejects(application.prepareBooking(invalidUuid, context), (error) => {
     assert.ok(error instanceof ProjectSApplicationError);
@@ -271,5 +317,178 @@ test('migration baseline: scopes retain uniqueness and enum issue paths', () => 
   })), [{ code: 'custom', path: ['scopes'] }]);
   assert.deepEqual(issuesOf(executionContextSchema.safeParse({
     ...context, scopes: ['slots:delete'],
-  })), [{ code: 'invalid_enum_value', path: ['scopes', 0] }]);
+  })), [{ code: 'invalid_value', path: ['scopes', 0] }]);
+});
+
+test('migration compatibility: existing scalar, object, literal and enum messages remain exact', () => {
+  // Recorded from the unchanged 3.25.76 application schemas, not candidate
+  // defaults. Raw v4 issue codes can change; these public projections cannot.
+  const page = goldenParityVectors[0].authorityData;
+  const invalidNumbers = {
+    ...page,
+    meetingTypes: [{
+      ...page.meetingTypes[0], durationMinutes: 4.5, maxAdvanceDays: 0, minNoticeMinutes: -1, title: '  ',
+    }],
+  };
+  const cases = [
+    [prepareBookingInputSchema, {}, [
+      { path: ['booker'], message: 'Required' },
+      { path: ['guestTimeZone'], message: 'Required' },
+      { path: ['meetingTypeId'], message: 'Required' },
+      { path: ['startAt'], message: 'Required' },
+      { path: ['username'], message: 'Required' },
+    ]],
+    [prepareBookingInputSchema, null, [{ path: [], message: 'Expected object, received null' }]],
+    [getBookingPageDataSchema, invalidNumbers, [
+      { path: ['meetingTypes', 0, 'durationMinutes'], message: 'Expected integer, received float' },
+      { path: ['meetingTypes', 0, 'durationMinutes'], message: 'Number must be greater than or equal to 5' },
+      { path: ['meetingTypes', 0, 'maxAdvanceDays'], message: 'Number must be greater than or equal to 1' },
+      { path: ['meetingTypes', 0, 'minNoticeMinutes'], message: 'Number must be greater than or equal to 0' },
+      { path: ['meetingTypes', 0, 'title'], message: 'String must contain at least 1 character(s)' },
+    ]],
+    [prepareBookingDataSchema, { ...goldenParityVectors[2].authorityData, notHeld: false }, [
+      { path: ['notHeld'], message: 'Invalid literal value, expected true' },
+    ]],
+    [createBookingDataSchema, { ...goldenParityVectors[3].authorityData, status: 'pending' }, [
+      { path: ['status'], message: 'Invalid literal value, expected "confirmed"' },
+    ]],
+    [executionContextSchema, { ...context, scopes: ['notvalid'] }, [
+      { path: ['scopes', 0], message: "Invalid enum value. Expected 'booking_page:read' | 'slots:read' | 'bookings:prepare' | 'bookings:create', received 'notvalid'" },
+    ]],
+  ];
+  for (const [schema, input, expected] of cases) {
+    const parsed = schema.safeParse(input);
+    assert.equal(parsed.success, false);
+    assert.deepEqual(parsed.error.issues.map(({ path, message }) => ({ path, message })), expected);
+  }
+  for (const [type, input] of [
+    ['date', new Date(0)], ['map', new Map()], ['set', new Set()],
+    ['promise', Promise.resolve(null)], ['nan', NaN], ['number', Infinity],
+  ]) {
+    const parsed = prepareBookingInputSchema.safeParse(input);
+    assert.equal(parsed.success, false);
+    assert.deepEqual(parsed.error.issues.map(({ path, message }) => ({ path, message })), [
+      { path: [], message: 'Expected object, received ' + type },
+    ]);
+  }
+});
+
+test('migration compatibility: malformed review URLs preserve nonthrowing check order', async () => {
+  for (const input of ['', 'a', '🧭']) {
+    for (const result of [v2StepUpReviewUrlSchema.safeParse(input), await v2StepUpReviewUrlSchema.safeParseAsync(input)]) {
+      assert.equal(result.success, false);
+      assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+        { path: [], message: 'Invalid url' },
+        { path: [], message: 'Expected an exact authority review URL with one opaque review UUID.' },
+      ]);
+    }
+  }
+});
+
+test('migration compatibility: step-up matching does not run after a child transform fails', () => {
+  const stepUp = {
+    reviewId: legacyUuid,
+    reviewUrl: 'https://project-s.example/authority/review#review=' + legacyUuid,
+    expiresAt: '2026-11-02T13:05:00.000001Z',
+  };
+  for (const reviewId of ['', 'invalid']) {
+    const result = v2ProblemStepUpSchema.safeParse({ ...stepUp, reviewId });
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+      { path: ['reviewId'], message: 'String must contain exactly 36 character(s)' },
+      { path: ['reviewId'], message: 'Invalid uuid' },
+    ]);
+  }
+  for (const reviewUrl of ['', 'invalid']) {
+    const result = v2ProblemStepUpSchema.safeParse({ ...stepUp, reviewUrl });
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+      { path: ['reviewUrl'], message: 'Invalid url' },
+      { path: ['reviewUrl'], message: 'Expected an exact authority review URL with one opaque review UUID.' },
+    ]);
+  }
+  const invalidInstantAndMismatchedReview = v2ProblemStepUpSchema.safeParse({
+    ...stepUp,
+    expiresAt: 'invalid',
+    reviewUrl: 'https://project-s.example/authority/review#review=22222222-2222-4222-8222-222222222222',
+  });
+  assert.equal(invalidInstantAndMismatchedReview.success, false);
+  assert.deepEqual(invalidInstantAndMismatchedReview.error.issues.map(({ path, message }) => ({ path, message })), [
+    { path: ['expiresAt'], message: 'Invalid v2 instant or UTC value outside four-digit years.' },
+    { path: ['reviewUrl'], message: 'Review URL must reference the same review ID.' },
+  ]);
+});
+
+test('migration compatibility: context binding preserves aborted UUID and continuable instant failures', () => {
+  const subjectId = '22222222-2222-4222-8222-222222222222';
+  const principal = {
+    contractVersion: 2,
+    requestId: 'request-v2-context',
+    principalId: legacyUuid,
+    subjectId,
+    instanceId: legacyUuid,
+    epoch: 1,
+    verifiedAt: '2026-10-22T12:00:00.000001-03:00',
+    transport: 'ui',
+  };
+  const actor = {
+    ...principal, actorId: legacyUuid, credentialId: legacyUuid,
+    credentialRevision: 1, credentialFingerprint: 'a'.repeat(64), transport: 'stdio_mcp',
+  };
+  for (const [schema, input, uuidFields] of [
+    [v2PrincipalContextSchema, principal, ['principalId', 'subjectId', 'instanceId']],
+    [v2ActorContextSchema, actor, ['principalId', 'subjectId', 'instanceId', 'actorId', 'credentialId']],
+  ]) {
+    for (const field of uuidFields) {
+      const result = schema.safeParse({ ...input, [field]: 'invalid' });
+      assert.equal(result.success, false);
+      assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+        { path: [field], message: 'String must contain exactly 36 character(s)' },
+        { path: [field], message: 'Invalid uuid' },
+      ]);
+    }
+    const result = schema.safeParse({ ...input, verifiedAt: 'invalid' });
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+      { path: ['verifiedAt'], message: 'Invalid v2 instant or UTC value outside four-digit years.' },
+      { path: ['subjectId'], message: 'The initial authority subject must be the issuing principal.' },
+    ]);
+  }
+});
+
+test('migration compatibility: nested continuable instant errors preserve problem and envelope refusals', () => {
+  const problem = {
+    code: 'FORBIDDEN', status: 400,
+    type: 'https://project-s.example/problems/forbidden',
+    title: 'Permission unavailable', detail: 'The requested operation is not permitted.',
+    requestId: 'request-v2-problems',
+    stepUp: {
+      reviewId: legacyUuid,
+      reviewUrl: 'https://project-s.example/authority/review#review=' + legacyUuid,
+      expiresAt: 'invalid',
+    },
+  };
+  const result = v2ProblemEnvelopeSchema.safeParse({
+    contractVersion: 2, requestId: 'request-v2-other', error: problem,
+  });
+  assert.equal(result.success, false);
+  assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+    { path: ['error', 'stepUp', 'expiresAt'], message: 'Invalid v2 instant or UTC value outside four-digit years.' },
+    { path: ['error', 'status'], message: 'Status must be 403 for FORBIDDEN.' },
+    { path: ['error', 'stepUp'], message: 'Step-up is required only for STEP_UP_REQUIRED.' },
+    { path: ['error', 'requestId'], message: 'Envelope and problem request IDs must match.' },
+  ]);
+});
+
+test('migration compatibility: invalid booker transforms suppress the parent slot-order check', () => {
+  const summary = goldenParityVectors[2].authorityData.summary;
+  for (const [field, value] of [['email', 'invalid'], ['name', 'a'], ['notes', '\t']]) {
+    const result = preparedBookingSummarySchema.safeParse({
+      ...summary, booker: { ...summary.booker, [field]: value }, endAt: summary.startAt,
+    });
+    assert.equal(result.success, false);
+    assert.deepEqual(result.error.issues.map(({ path, message }) => ({ path, message })), [
+      { path: ['booker', field], message: 'Invalid' },
+    ]);
+  }
 });

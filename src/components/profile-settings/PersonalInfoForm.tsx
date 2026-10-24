@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
@@ -11,21 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import TimeZoneSelect from '@/components/common/TimeZoneSelect';
-import { ianaTimeZoneSchema } from '@/types/publicBooking';
 import { isUsernameAvailable } from '@/services/usernameService';
-
-const formSchema = z.object({
-  username: z.string()
-    .min(3, { message: 'Username must be at least 3 characters.' })
-    .max(30, { message: 'Username cannot exceed 30 characters.' })
-    .regex(/^[a-z0-9][a-z0-9_-]{2,29}$/, {
-      message: 'Use lowercase letters, numbers, underscores, or hyphens, starting with a letter or number.',
-    }),
-  fullName: z.string().trim().min(2, { message: 'Full name must be at least 2 characters.' }).max(120, { message: 'Full name cannot exceed 120 characters.' }),
-  timezone: ianaTimeZoneSchema,
-});
-
-export type PersonalInfoFormValues = z.infer<typeof formSchema>;
+import {
+  personalInfoFormSchema,
+  type PersonalInfoFormValues,
+} from '@/types/personalInfoForm';
+export type { PersonalInfoFormValues } from '@/types/personalInfoForm';
 
 interface PersonalInfoFormProps {
   userId: string;
@@ -48,7 +38,7 @@ const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
 
   const form = useForm<PersonalInfoFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(personalInfoFormSchema),
     defaultValues: initialValues,
   });
 

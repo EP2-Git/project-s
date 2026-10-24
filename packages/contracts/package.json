@@ -19,12 +19,12 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && node ../../scripts/annotate-package-types.mjs dist",
     "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
-    "zod": "^3.25.76"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",

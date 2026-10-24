@@ -41,9 +41,9 @@ export type ProjectSHttpMethod = 'GET' | 'POST';
 export type ProjectSOperationStability = 'prealpha' | 'stable';
 
 export type ProjectSOperationDescriptor<
-  TInput extends z.ZodTypeAny = z.ZodTypeAny,
-  TData extends z.ZodTypeAny = z.ZodTypeAny,
-  TSuccess extends z.ZodTypeAny = z.ZodTypeAny,
+  TInput extends z.ZodType = z.ZodType,
+  TData extends z.ZodType = z.ZodType,
+  TSuccess extends z.ZodType = z.ZodType,
 > = Readonly<{
   id: ProjectSOperationId;
   version: 1;
@@ -79,9 +79,9 @@ const resultJsonSchema = (successJsonSchema: JsonSchema): JsonSchema => ({
 });
 
 const defineOperation = <
-  TInput extends z.ZodTypeAny,
-  TData extends z.ZodTypeAny,
-  TSuccess extends z.ZodTypeAny,
+  TInput extends z.ZodType,
+  TData extends z.ZodType,
+  TSuccess extends z.ZodType,
 >(definition: Omit<
   ProjectSOperationDescriptor<TInput, TData, TSuccess>,
   | 'inputSchema'
