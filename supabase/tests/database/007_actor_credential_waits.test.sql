@@ -76,7 +76,7 @@ select ok(clock_timestamp() < (select (value #>> '{}')::timestamptz from project
  'lookup reached the fence before expiry');
 select pg_sleep(greatest(0,extract(epoch from (
  (select (value #>> '{}')::timestamptz from project_s_c1_wait.state where key='deadline')
- +interval '30 milliseconds'-clock_timestamp()))::double precision);
+ +interval '30 milliseconds'-clock_timestamp()))::double precision));
 select is(dblink_exec('c1_holder','commit'),'COMMIT','fence releases after expiry');
 select is(value,null::text,'fresh post-wait time denies the expired credential')
  from dblink_get_result('c1_reader') as result(value text);
