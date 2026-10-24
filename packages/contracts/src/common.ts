@@ -450,7 +450,7 @@ export const confirmationGrantSchema = confirmationGrantNode.zod;
 
 const scopesNode: ContractNode<z.ZodEffects<z.ZodArray<typeof projectSScopeSchema>>> =
   contractNode(
-    z.array(projectSScopeSchema).max(projectSScopes.length).refine(
+    arrayNode(projectSScopeNode, { maxItems: projectSScopes.length }).zod.refine(
       (values) => new Set(values).size === values.length,
       'Scopes must be unique.',
     ),

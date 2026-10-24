@@ -6,6 +6,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- Added early collection-size rejection and bounded HTTP request/SDK response
+  stream reads while preserving v1/v2 schemas. This is a local application
+  mitigation for GHSA-mrhx-c7xc-m3w5; Zod 3 remains affected and its audit finding
+  remains open pending a reviewed dependency migration or upstream backport.
 - Updated Vitest, its coverage provider and workspace test dependencies to
   4.1.12, resolving the development-only manual mock registration and Windows
   mock redirect allowlist advisories. Application code, test thresholds and

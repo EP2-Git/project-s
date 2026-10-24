@@ -27,6 +27,7 @@ import {
   SupabaseAuditSink,
   SupabaseSchedulingAuthority,
 } from '../_shared/supabaseAuthority.ts';
+import { parseRequestBody as parseBody } from '../_shared/requestBody.ts';
 
 const jsonHeaders = {
   'cache-control': 'no-store',
@@ -239,35 +240,6 @@ const responseJson = (
       ...extraHeaders,
     },
   });
-
-const parseBody = async (request: Request): Promise<unknown> => {
-  const declared = Number(request.headers.get('content-length') ?? '0');
-  if (Number.isFinite(declared) && declared > 16_384) {
-    throw new ProjectSApplicationError({
-      status: 413,
-      code: 'VALIDATION_ERROR',
-      detail: 'The request body is too large.',
-    });
-  }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > 16_384) {
-    throw new ProjectSApplicationError({
-      status: 413,
-      code: 'VALIDATION_ERROR',
-      detail: 'The request body is too large.',
-    });
-  }
-  try {
-    return JSON.parse(text || '{}');
-  } catch (cause) {
-    throw new ProjectSApplicationError({
-      status: 400,
-      code: 'VALIDATION_ERROR',
-      detail: 'The request body must be valid JSON.',
-      cause,
-    });
-  }
-};
 
 const titleFor = (code: ProjectSProblemCode) =>
   code

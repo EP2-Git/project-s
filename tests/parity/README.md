@@ -19,3 +19,12 @@ npm run test:parity
 This deterministic harness does not replace the live database/HTTP/MCP agent
 flow, the separate 50-way booking-collision check, or an official MCP
 conformance runner.
+
+`resource-parity.test.mjs` additionally runs the production HTTP body parser,
+bounded contracts and SDK against isolated streams. It verifies early nested
+collection rejection, request/response byte limits and cancellation, existing
+golden-vector normalization/strictness, and unchanged v1/v2 artifact pins. It is
+included in `test:parity`; Node uses its TypeScript stripping flag for the shared
+Edge helper. Run the same vectors in standalone Deno with the production import
+map using `npm run test:parity:edge` (Deno must be on PATH). This does not start
+the Edge router or prove the bundled Supabase runtime, database or hosted CI.

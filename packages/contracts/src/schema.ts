@@ -35,11 +35,54 @@ export const nullableNode = <TSchema extends z.ZodTypeAny>(
     anyOf: [cloneJson(node.jsonSchema), { type: 'null' }],
   });
 
+// Zod 3 records a size issue but still parses every element. Keep its array
+// API/types and ordinary parsing, but abort an excessive raw array first.
+class BoundedZodArray<
+  TSchema extends z.ZodTypeAny,
+  TCardinality extends z.ArrayCardinality = 'many',
+> extends z.ZodArray<TSchema, TCardinality> {
+  override _parse(input: z.ParseInput): z.ParseReturnType<this['_output']> {
+    if (Array.isArray(input.data)) {
+      const exact = this._def.exactLength;
+      const maximum = this._def.maxLength;
+      const exceeded = exact !== null && input.data.length > exact.value
+        ? { ...exact, exact: true }
+        : maximum !== null && input.data.length > maximum.value
+          ? { ...maximum, exact: false }
+          : null;
+      if (exceeded !== null) {
+        z.addIssueToContext(this._getOrReturnCtx(input), {
+          code: z.ZodIssueCode.too_big,
+          maximum: exceeded.value,
+          type: 'array',
+          inclusive: true,
+          exact: exceeded.exact,
+          message: exceeded.message,
+        });
+        return z.INVALID;
+      }
+    }
+    return super._parse(input);
+  }
+
+  override min(value: number, message?: Parameters<z.ZodArray<TSchema>['min']>[1]): this {
+    return new BoundedZodArray<TSchema, TCardinality>(super.min(value, message)._def) as this;
+  }
+
+  override max(value: number, message?: Parameters<z.ZodArray<TSchema>['max']>[1]): this {
+    return new BoundedZodArray<TSchema, TCardinality>(super.max(value, message)._def) as this;
+  }
+
+  override length(value: number, message?: Parameters<z.ZodArray<TSchema>['length']>[1]): this {
+    return new BoundedZodArray<TSchema, TCardinality>(super.length(value, message)._def) as this;
+  }
+}
+
 export const arrayNode = <TSchema extends z.ZodTypeAny>(
   node: ContractNode<TSchema>,
   options: Readonly<{ minItems?: number; maxItems?: number }> = {},
 ): ContractNode<z.ZodArray<TSchema>> => {
-  let schema = node.zod.array();
+  let schema = new BoundedZodArray(node.zod.array()._def);
   if (options.minItems !== undefined) schema = schema.min(options.minItems);
   if (options.maxItems !== undefined) schema = schema.max(options.maxItems);
   return contractNode(schema, {

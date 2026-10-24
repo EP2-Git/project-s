@@ -1,6 +1,8 @@
 import {
+  BodyTooLargeError,
   PROJECT_S_CONTRACT_MEDIA_TYPE,
   PROJECT_S_PROBLEM_MEDIA_TYPE,
+  PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES,
   createBookingInputSchema,
   createBookingResponseSchema,
   getBookingPageInputSchema,
@@ -12,6 +14,7 @@ import {
   requestIdSchema,
   projectSProblemEnvelopeSchema,
   projectSProblemSchema,
+  readBoundedText,
   type CreateBookingInput,
   type CreateBookingResponse,
   type GetBookingPageInput,
@@ -94,8 +97,27 @@ const defaultRequestId = (): string => {
   return `project_s_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 };
 
-const parseJson = async (response: Response): Promise<unknown> => {
-  const text = await response.text();
+const parseJson = async (
+  response: Response,
+  requestId: string,
+  signal?: AbortSignal,
+): Promise<unknown> => {
+  let text: string;
+  try {
+    text = await readBoundedText(response.body, PROJECT_S_PUBLIC_RESPONSE_MAX_BYTES, {
+      declaredLength: response.headers.get('content-length'),
+      signal,
+    });
+  } catch (cause) {
+    if (cause instanceof BodyTooLargeError) {
+      throw new ProjectSProtocolError(
+        'Project S returned a response that exceeds the public contract size limit.',
+        response.status,
+        response.headers.get('x-request-id') ?? requestId,
+      );
+    }
+    throw new ProjectSTransportError('Could not read the Project S response.', cause);
+  }
   if (text.trim() === '') return undefined;
   try {
     return JSON.parse(text) as unknown;
@@ -236,7 +258,7 @@ export class ProjectSClient {
       throw new ProjectSTransportError('Could not reach the Project S service.', cause);
     }
 
-    const payload = await parseJson(response);
+    const payload = await parseJson(response, requestId, requestOptions?.signal);
     if (!response.ok) {
       const problem = parseProjectSProblem(payload);
       if (problem) throw new ProjectSApiError(problem, response.status);

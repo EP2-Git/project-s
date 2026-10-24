@@ -68,6 +68,8 @@ local data while evaluating it.
 ## I want to evaluate security
 
 - [Security model](security-model.md) — current controls and deployment duties.
+- [Zod resource limits](zod-resource-limits.md) — local collection/stream
+  mitigation, compatibility evidence and the remaining dependency finding.
 - [Agent threat model](agent-threat-model.md) — client, transport, and authority
   threats.
 - [Confirmation flow](agent-confirmation-flow.md) — explicit browser authority
