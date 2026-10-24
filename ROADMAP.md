@@ -52,8 +52,14 @@ Acceptance does not make delegation available or waive full-pipeline gates.
 The separate [v2 contract foundation](packages/contracts/README.md#v2-mandate-and-booking-schema-foundation)
 now provides mandate/booking and principal-control schemas, server-only contexts,
 strict problem envelopes and lossless time normalization. Remaining public
-control serializers, provider evidence, verifier and private SQL implementation/
-proof are still required; no delegated routes are enabled.
+control serializers, provider evidence, complete verifier integration and the
+remaining private SQL implementation/proof are still required; no delegated
+routes are enabled.
+
+The [private credential foundation](docs/actor-credential-foundation.md) adds
+synthetic-only fenced storage and a server verifier without configuring an
+instance or exposing a route. Mandates, full transport integration, recovery,
+retention and genuine authorized monitoring remain gated.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 

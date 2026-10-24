@@ -41,6 +41,9 @@ local data while evaluating it.
 - [V2 contract foundation](../packages/contracts/README.md#v2-mandate-and-booking-schema-foundation)
   — strict mandate, control, internal-context and problem schemas under
   implementation; no callable v2 API.
+- [Private actor credential foundation](actor-credential-foundation.md) —
+  synthetic-only verifier storage and revocation; no configured instance,
+  delegated route or booking permission.
 - [TypeScript SDK](../packages/sdk/README.md) — source-workspace client usage.
 - [Local stdio MCP](mcp-local-stdio.md) and
   [tool manifest](mcp-tool-manifest.md) — the client-launched MCP adapter.
