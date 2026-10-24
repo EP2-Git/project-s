@@ -37,6 +37,13 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: 2.9.8
+      - name: Verify Node and Edge migration parity
+        run: npm run test:parity:edge
+      - name: Check the complete Edge entrypoint
+        run: deno check --no-lock --node-modules-dir=none --config=supabase/functions/api-v1/deno.json supabase/functions/api-v1/index.ts
       - run: npm run test:coverage
       - run: npm run build
       - run: npm run audit
@@ -130,6 +137,7 @@ jobs:
       - run: npm run db:env
       - run: npm run test:agent-flow
       - run: npm run test:e2e:install
+      - run: npm run test:browser:body-limits
       - run: npm run test:built-app
       - run: npm run test:e2e
       - name: Upload browser report

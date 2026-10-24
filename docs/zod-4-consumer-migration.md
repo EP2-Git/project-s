@@ -1,10 +1,15 @@
 # Consuming Project S contracts with Zod 4
 
-The local migration candidate uses the actual **Zod 4.6.7** runtime in Node,
+The migration candidate uses the actual **Zod 4.6.7** runtime in Node,
 the browser and the Edge import map. It does not use `zod/v3`. This implements
 the locally accepted [RFC](rfcs/zod-4-compatibility-migration.md) and
 [ADR 0005](adr/0005-zod-4-compatibility-migration.md); it is not a release,
 deployment, alert dismissal or claim that hosted integration checks ran.
+Ethan subsequently authorized pushing the focused Zod pull request and merging
+only after the exact latest candidate passes the full repository pipeline
+against current main and satisfies repository review requirements. Releases,
+deployment, credential/security-setting changes and manual alert dismissal
+remain unauthorized.
 
 ## Wire and domain compatibility
 
@@ -125,7 +130,12 @@ Edge import map, followed by Node parity, standalone Deno parity and the full
 Edge entrypoint typecheck. Standalone Deno is distinct from Supabase's bundled
 Edge Runtime. Docker-backed SQL, race and complete booking checks still require
 their real disposable stack; synthetic browser and parser proof cannot replace
-them. No hosted candidate pipeline runs under the local-only authorization.
+them. Docker-backed integration and hosted candidate pipeline evidence remain
+required on the exact candidate. A failed stack startup is not a passing
+integration result. Hosted verification
+is authorized through the focused pull request, but local passes alone do not
+permit merge. Do not bypass missing, pending, failing or unexpectedly skipped
+checks, required review or branch protection.
 
 ## Rollback
 

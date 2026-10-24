@@ -1,6 +1,6 @@
 # ADR 0005: Zod 4 compatibility migration
 
-- **Status:** Accepted for local implementation; publication and integration gates remain
+- **Status:** Accepted for implementation; integration and merge gated
 - **Date:** 2026-10-24
 - **Owner:** Ethan Patten, lead maintainer
 - **Issue/Discussion:** [prior PR 28 migration decision](https://github.com/EP2-Git/project-s/pull/28#issuecomment-6203932234), [migration RFC](../rfcs/zod-4-compatibility-migration.md)
@@ -17,8 +17,10 @@ and does not establish compatibility.
 The repository previously required an RFC/ADR and parity process for this major
 migration. On 2026-10-24, Ethan reviewed the recommended path and instructed
 "Go with the recommendation." This accepts the compatibility design and local
-implementation. Pushing, publishing, merging, deployment, alert dismissal and
-credential/security-setting changes remain outside this authorization.
+implementation. Ethan subsequently authorized completing and pushing the focused
+Zod pull request, with merging conditional on the full repository pipeline and
+required review. This authorization does not permit releases, deployment,
+credential/security-setting changes or manual alert dismissal.
 
 ## Decision
 
@@ -105,8 +107,12 @@ offsets and local-date year handling; corrections require separate review.
 ## Migration and rollback
 
 Migrate source, dependency declarations, lockfile and Edge resolution together
-in an isolated candidate. Local implementation approval does not authorize
-publishing or merging.
+in an isolated candidate. The focused branch and pull request may be pushed and
+updated under Ethan's subsequent authorization. Merge only after every expected
+job in the full repository pipeline succeeds on the exact latest candidate
+against current main and repository review requirements are satisfied. Missing,
+pending, failing or unexpectedly skipped checks do not satisfy this gate; do not
+use an administrative override.
 
 Later rollback must restore a coherent dependency/source/import-map unit and
 rebuild workspace output. Restoring v3 restores its risk; restore/retain the
@@ -123,9 +129,12 @@ MCP/examples and forms; SQL/types/races; browser/Axe/responsive/production-bundl
 checks; full/production audits, scan/licences and the exact-candidate full
 pipeline. Keep existing thresholds and expected jobs intact.
 
-The recorded 28 Deno entrypoint type errors are preexisting evidence to repair
-or reconcile, not a waiver. Separate local, focused Deno, bundled Edge and hosted
-results, and state unavailable Docker/integration evidence explicitly.
+The recorded 28 Deno entrypoint type errors were reproduced on unchanged main;
+the candidate repairs their declaration linkage and narrow type annotations.
+Strict standalone Deno entrypoint checking now passes. Separate local, focused
+Deno, bundled Edge and hosted results, and state unavailable Docker/integration
+evidence explicitly. Docker-backed integration and hosted pipeline evidence
+remain pending; local results do not waive them.
 
 ## Consequences
 

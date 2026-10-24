@@ -1,6 +1,6 @@
 # RFC: Zod 4 compatibility migration
 
-- **Status:** Accepted for local implementation; publication and integration gates remain
+- **Status:** Accepted for implementation; integration and merge gated
 - **Date:** 2026-10-24
 - **Decision owner:** Ethan Patten, lead maintainer
 - **Companion:** [ADR 0005](../adr/0005-zod-4-compatibility-migration.md)
@@ -11,8 +11,10 @@ On 2026-10-24 Ethan reviewed the recommended path and instructed "Go with the
 recommendation." This accepts local implementation of the compatibility design,
 including genuine patched Zod 4, synchronized Node/Edge resolution and the
 documented exported parser type/diagnostic migration. Public behavior and artifact
-pins remain frozen. Pushing, publishing, merging, deployment, alert dismissal and
-credential/security-setting changes remain outside this authorization.
+pins remain frozen. Ethan subsequently authorized completing and pushing the
+focused Zod pull request, with merging conditional on the full repository
+pipeline and required review. Releases, deployment, credential/security-setting
+changes and manual alert dismissal remain outside this authorization.
 
 The local candidate now pins genuine **Zod 4.6.7** in Node and Edge and
 **@hookform/resolvers 5.2.2** for forms. See the
@@ -246,11 +248,16 @@ not remediation.
    comparison, independent-client booking races, agent flow, all browser engines,
    production-bundle smoke, keyboard/Axe/responsive and affected visual checks.
    Run full and production dependency audits, secret scanning and licence checks.
-6. **Later publication review.** Only separately authorized PR work with the full
-   repository pipeline passing on its exact current commit/current main may be
-   considered for merge. Do not weaken audit thresholds, golden pins, assertions,
-   branch protection or expected checks. No release, deployment or hosted
-   configuration change follows from this proposal.
+6. **Authorized focused PR and guarded merge.** Ethan's subsequent authorization
+   permits pushing the focused branch and creating or updating its pull request.
+   Merge only when every expected job in the full repository pipeline succeeds
+   on the exact latest candidate against current main and repository review
+   requirements are satisfied. Missing, pending, failing or unexpectedly skipped
+   checks do not pass this gate. Recheck the head and checks immediately before
+   merge. Do not weaken audit thresholds, golden pins, assertions, branch
+   protection or expected checks, or use an administrative override. No release,
+   deployment, credential/security-setting change or manual alert dismissal is
+   authorized.
 
 The compatibility harness participates in `npm run test:parity`; its standalone
 Deno execution belongs with `npm run test:parity:edge`. Both use the actual
@@ -259,11 +266,13 @@ candidate observations separate from those baseline/application results.
 
 The existing investigation reproduced **28 standalone Deno entrypoint type
 errors** on unchanged main. Keep their diagnostics and baseline comparison
-visible; passing focused resource vectors neither resolves nor waives them.
-Repair or reconcile them through reviewed, scoped work before claiming a clean
-Edge typecheck/full migration gate. Preserve the distinction between standalone
-Deno, bundled local Supabase Edge Runtime and hosted CI. Docker-unavailable SQL
-or browser integration is a gap, never a passing result.
+visible. The candidate's scoped declaration-link and narrow type-annotation
+repairs now pass strict full standalone Deno entrypoint checking, without a
+checking waiver. Preserve the distinction between standalone Deno, bundled local
+Supabase Edge Runtime and hosted CI. Docker-backed integration and hosted
+pipeline evidence must be recorded on the exact candidate. A failed stack
+startup does not satisfy integration gates.
+Unavailable SQL or browser integration is a gap, never a passing result.
 
 The historical v3 dependency remains vulnerable. The local candidate changes
 actual resolution to 4.6.7 and requires both full and production audits to pass.
@@ -282,5 +291,6 @@ revert all the way to unmitigated main as an unnoticed security rollback.
 The accepted path is a patched **v4 runtime with explicit compatibility
 adapters**, preserving existing wire and normalized domain behavior while
 documenting parser-type migration. Remaining work is validation and integration
-review, including explicitly unavailable checks. No publication is authorized;
-this decision does not reopen authority designs or permit unrelated product work.
+review, including explicitly unavailable checks. The focused pull request and
+conditional merge are authorized only under the gates above; this decision does
+not reopen authority designs or permit unrelated product work.

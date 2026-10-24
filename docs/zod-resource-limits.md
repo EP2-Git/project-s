@@ -1,6 +1,6 @@
 # Zod collection and transport resource limits
 
-Status: local mitigation and approved Zod 4 migration candidate, 2026-10-24.
+Status: approved Zod 4 implementation; integration and merge gated, 2026-10-24.
 No release or deployment is implied. The candidate now resolves genuine Zod
 4.6.7 in Node and Edge. Main and GitHub alert state remain separate; no alert
 has been dismissed or remotely changed.
@@ -138,14 +138,23 @@ does not impose global service memory, time, rate or concurrency budgets. Fetch
 or a custom stream may allocate an incoming chunk before the reader receives
 it. Unrelated provider fetches and the MCP line reader are not rewritten.
 
-## Approved local dependency migration
+## Approved dependency migration and integration gates
 
 The [Zod 4 migration RFC](rfcs/zod-4-compatibility-migration.md) and
 [ADR 0005](adr/0005-zod-4-compatibility-migration.md) were accepted for local
 implementation on 2026-10-24. The candidate synchronizes manifests, lockfile and
 Edge map at 4.6.7, with the required compatible form resolver. See the
 [consumer migration guide](zod-4-consumer-migration.md) for source-type and native
-diagnostic changes. Pushing, merging and deployment remain unauthorized.
+diagnostic changes. Ethan subsequently authorized completing and pushing the
+focused Zod pull request. Merge is conditional on every expected job in the full
+repository pipeline succeeding on the exact latest candidate against current
+main, with repository review requirements satisfied. Docker-backed integration
+and hosted results must accompany the review; a failed stack startup does not
+satisfy those gates. Recheck the candidate
+head and all checks immediately before merge; do not bypass protection or treat
+missing, pending, failing or unexpectedly skipped jobs as passing. Releases,
+deployment, credential/security-setting changes and manual alert dismissal
+remain unauthorized.
 
 `tests/parity/migration-compatibility.test.mjs` freezes actual v1/v2 acceptance,
 normalization and error boundaries in Node and standalone Deno. Separately,
