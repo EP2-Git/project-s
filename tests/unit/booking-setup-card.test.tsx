@@ -95,7 +95,7 @@ describe('booking setup and link recovery', () => {
     vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('permission denied'));
     draw();
     fireEvent.click(screen.getByRole('button', { name: 'Embed code' }));
-    const dialog = screen.getByRole('dialog');
+    const dialog = screen.getByRole('dialog', { name: 'Booking embed' });
     expect((within(dialog).getByRole('textbox', { name: 'Booking embed code' }) as HTMLTextAreaElement).value).toContain('/embed/new-host');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Copy snippet' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Select and copy the code above.');

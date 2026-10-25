@@ -102,7 +102,7 @@ const DashboardBookingLinkCard: React.FC<DashboardBookingLinkCardProps> = ({ use
               <Button size="icon" variant="outline" aria-label="Share link" onClick={handleShare} className="h-8 w-8"><Share2 className="h-4 w-4" /></Button>
               <Popover>
                 <PopoverTrigger asChild><Button size="icon" variant="outline" aria-label="Embed code" className="h-8 w-8"><Code2 className="h-4 w-4" /></Button></PopoverTrigger>
-                <PopoverContent className="w-96 max-w-[calc(100vw-2rem)]" align="end"><EmbedSnippet username={username} /></PopoverContent>
+                <PopoverContent aria-label="Booking embed" className="w-96 max-w-[calc(100vw-2rem)]" align="end"><EmbedSnippet username={username} /></PopoverContent>
               </Popover>
               <Button size="icon" variant="outline" aria-label="Open link" asChild className="h-8 w-8"><a href={bookingUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>
             </div>
