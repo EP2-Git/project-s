@@ -10,12 +10,10 @@ import AvailabilitySettings from './AvailabilitySettings';
 
 import { Calendar, BookOpen, Clock } from 'lucide-react';
 import type { BookingEvent } from '@/hooks/useBookingsData';
-import type { MeetingType, Profile } from '@/types/profile';
+import type { MeetingType } from '@/types/profile';
 import type { IanaTimeZone } from '@/types/publicBooking';
 
 interface DashboardLayoutProps {
-  username: string | null;
-  profile?: Profile | null;
   calendarEvents: BookingEvent[];
   bookingsLoading: boolean;
   filter: 'all' | 'upcoming' | 'week';
@@ -37,8 +35,6 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({
-  username,
-  profile,
   calendarEvents,
   bookingsLoading,
   filter,
@@ -76,7 +72,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {activeTab === 'overview' && (
         <DashboardGrid className="gap-x-6 gap-y-6">
           <div className="col-span-12 min-w-0">
-            <DashboardBookingLinkCard username={username} profile={profile} />
+            <DashboardBookingLinkCard key={userId} userId={userId} onNavigate={setActiveTab} />
           </div>
 
           <div className="col-span-12 md:col-span-8 min-w-0 overflow-hidden">

@@ -147,7 +147,18 @@ jobs:
       - run: npm run test:e2e:install
       - run: npm run test:browser:body-limits
       - run: npm run test:built-app
-      - run: npm run test:e2e
+      - name: Run every browser project with an isolated disposable database
+        shell: bash
+        run: |
+          failed=0
+          for browser in chromium firefox webkit; do
+            # This job owns a fresh local-only stack. Keep normal abuse limits
+            # intact and isolate each browser's synthetic bookings and quotas.
+            npm run db:reset
+            PLAYWRIGHT_HTML_OUTPUT_DIR="playwright-report/$browser" \
+              npm run test:e2e -- --project="$browser" --output="test-results/$browser" || failed=1
+          done
+          exit "$failed"
       - name: Upload browser report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

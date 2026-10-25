@@ -30,6 +30,22 @@
 
 No test may use a paid API, production project, or real personal data.
 
+### Browser fixture isolation
+
+The CI browser job owns a fresh disposable local Supabase stack. It runs every
+test in Chromium, Firefox and WebKit separately, resetting that job's database
+before each project. Anonymous create requests intentionally share a network
+quota across host names; a growing multi-browser suite must not exhaust that
+quota for later cases. Isolation preserves the real rate limits and confirmation
+rules instead of raising limits, spoofing addresses or deleting live buckets.
+Each project writes its HTML report beneath `playwright-report/<browser>`; any
+project failure makes the browser job fail, and all project reports are uploaded.
+
+`npm run test:e2e` remains non-destructive. For an existing local stack, run one
+project at a time (`npm run test:e2e -- --project=chromium`) and respect its normal
+quotas. Reset only a database you have explicitly identified as disposable. The
+CI resets are not permission to reset an existing developer instance.
+
 ## Required release thresholds
 
 - lint: 0 errors and 0 warnings;
