@@ -82,7 +82,7 @@ const DashboardBookingLinkCard: React.FC<DashboardBookingLinkCardProps> = ({ use
               {steps.map(({ label, complete, tab }) => (
                 <li key={label} className="flex items-center gap-2 text-sm">
                   {complete ? <Check aria-hidden="true" className="h-4 w-4 shrink-0" /> : <Circle aria-hidden="true" className="h-4 w-4 shrink-0" />}
-                  {tab ? <Button variant="link" className="h-auto p-0 text-sm text-left whitespace-normal" onClick={() => onNavigate(tab)}>{label}</Button>
+                  {tab ? <Button variant="link" className="h-auto p-0 text-sm text-left whitespace-normal text-foreground" onClick={() => onNavigate(tab)}>{label}</Button>
                     : <Link className="underline underline-offset-4" to="/profile-settings">{label}</Link>}
                   <span className="ml-auto text-xs text-muted-foreground shrink-0">{complete ? 'Saved' : 'Needs setup'}</span>
                 </li>
