@@ -4,6 +4,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Replace account-age booking guidance with a read-only saved-setup checklist,
+  direct profile/meeting/availability actions, new-account link controls and
+  clipboard recovery. Setup status is not a free-slot or authority guarantee.
+
 - Add the disabled-boundary C1 actor credential store, server authentication
   adapter, principal-fenced revocation and sequenced minimal audit, with Node/
   Deno and SQL denial/wait regressions. No instance configuration, delegated

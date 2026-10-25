@@ -115,6 +115,33 @@ matrix remains separate.
 
 ## Local API and confirmation flow
 
+### First account and booking setup
+
+Open `/signup` on the local app and create a synthetic test identity. Follow any
+verification required by the checked-in local Auth configuration; its local
+mail inbox is `http://127.0.0.1:54324`. No external mail provider or hosted
+account is needed. Do not disable verification to bypass a failed signup.
+
+The dashboard's **Booking setup** card checks saved profile/timezone, an active
+meeting type and saved weekly hours or an available date on/after today in the
+host's saved timezone. Its actions open the corresponding settings. Save edits
+there, then return to Overview or use **Check setup again**. The initial signup
+trigger supplies weekday hours; review them before sharing the link.
+
+Copy, share, preview and embed remain available as soon as a valid saved username
+is read, including for a brand-new account. A blocked clipboard has manual copy
+instructions. A failed setup read shows retry guidance instead of completed
+steps. Only the signed-in owner's existing RLS reads supply this checklist;
+no progress flag or agent permission is written.
+
+**Your setup is saved** means those settings exist, not that a meeting fits a
+particular window or a slot is currently free. Preview `/book/<username>` to
+inspect guest times. Public preparation/confirmation and the database still
+recheck current scheduling and authority. Use a separate browser context for
+the guest walkthrough; the host can manage the resulting booking in Bookings.
+
+### API routing
+
 The browser calls the Project S HTTP boundary at its own origin. During
 `npm run dev`, Vite rewrites:
 
