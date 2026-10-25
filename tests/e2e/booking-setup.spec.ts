@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { enabledCalendarDaySelector, nextMondayTarget } from '../helpers/booking-calendar-target';
 
 test.describe.configure({ retries: 0 });
 
@@ -26,43 +27,30 @@ const chooseFirstAvailableTime = async (page: Page) => {
   const empty = page.getByText('No available time slots for this date.');
   const calendar = page.locator('section[aria-labelledby="select-date-title"]');
   await expect(slots.first().or(empty)).toBeVisible({ timeout: 15_000 });
-
-  // Inspect only saved Mondays in the current/next month. At most two slot
-  // requests cover today's elapsed window and the following week; do not scan
-  // every calendar date or create bookings through a fixture API.
-  let searchedMondays = 0;
-  for (let month = 0; month < 2; month += 1) {
-    if (await slots.first().isVisible()) {
-      await slots.first().focus();
-      await page.keyboard.press('Enter');
-      return;
-    }
-    const days = calendar.locator('button[name="day"][aria-label$="(Monday)"]:not([disabled])');
-    const count = await days.count();
-    for (let index = 0; index < count && searchedMondays < 2; index += 1) {
-      const day = days.nth(index);
-      if ((await day.getAttribute('aria-selected')) === 'true') continue;
-
-      const searched = page.waitForResponse((response) => (
-        response.request().method() === 'POST'
-        && response.url().includes('/api/v1/public/free-slots/search')
-      ));
-      await day.click();
-      searchedMondays += 1;
-      expect((await searched).ok()).toBe(true);
-      await expect(page.locator('section[aria-labelledby="available-times-title"] [aria-busy]')).toHaveAttribute('aria-busy', 'false');
-      await expect(slots.first().or(empty)).toBeVisible({ timeout: 15_000 });
-      if (await slots.first().isVisible()) {
-        await slots.first().focus();
-        await page.keyboard.press('Enter');
-        return;
-      }
-    }
-    if (month === 0 && searchedMondays < 2) {
-      await calendar.getByRole('button', { name: /go to next month/i }).click();
-    }
+  const today = await page.evaluate(() => {
+    const parts = new Intl.DateTimeFormat('en', {
+      timeZone: 'America/Halifax', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  });
+  const target = nextMondayTarget(today);
+  if (target.advanceMonth) {
+    await calendar.getByRole('button', { name: /go to next month/i }).click();
   }
-  throw new Error('The newly configured host exposed no free time on its next two saved Mondays.');
+  const day = calendar.locator(enabledCalendarDaySelector).filter({ hasText: new RegExp(`^${target.day}$`) });
+  await expect(day).toHaveCount(1);
+  const searched = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && response.url().includes('/api/v1/public/free-slots/search')
+    && response.request().postDataJSON().date === target.dateKey
+  ));
+  await day.click();
+  expect((await searched).ok()).toBe(true);
+  await expect(page.locator('section[aria-labelledby="available-times-title"] [aria-busy]')).toHaveAttribute('aria-busy', 'false');
+  await expect(slots.first()).toBeVisible({ timeout: 15_000 });
+  await slots.first().focus();
+  await page.keyboard.press('Enter');
 };
 
 test('a fresh host completes saved setup and a guest books with human approval', async ({
