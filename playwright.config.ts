@@ -6,8 +6,8 @@ export default defineConfig({
   failOnFlakyTests: Boolean(process.env.CI),
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  // These tests share one synthetic Supabase stack. Keep transport and browser
-  // projects serialized so a local run has the same isolation guarantees as CI.
+  // Keep tests serialized within a synthetic stack. CI resets its own disposable
+  // database between projects; this local command never resets existing data.
   workers: 1,
   reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
   use: {
