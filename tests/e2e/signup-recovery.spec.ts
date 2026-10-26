@@ -82,6 +82,10 @@ const fillOtherFields = async (page: Page) => {
 
 for (const width of [320, 390, 1280]) {
   test(`signup keyboard, validation and failed-Auth recovery at ${width}px`, async ({ page }) => {
+    // Three complete WCAG scans plus keyboard, validation and two-submit recovery
+    // exceed the default whole-case budget on Windows Firefox/WebKit. Individual
+    // assertion deadlines and the no-retry policy remain unchanged.
+    test.setTimeout(60_000);
     const fixture = await stubSignup(page);
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/signup');
