@@ -137,6 +137,15 @@ development-server tests cannot detect. It never authenticates or creates data.
 
 Local Docker results and hosted CI results are recorded separately; neither should be inferred when it was not run.
 
+## Signup recovery evidence
+
+Signup accessibility/recovery regressions use the actual form and hook with
+isolated username/Auth responses to exercise invalid fields, pending requests,
+failure focus, retained values, retry and repeated submit events. Browser checks
+cover keyboard controls, Axe and phone-width layouts. Those response stubs do
+not prove Auth delivery or database behavior; the separate fresh-account
+booking-setup scenario uses the disposable stack and normal signup policy.
+
 ## Pull-request dependency review
 
 Every pull request also runs `Dependency vulnerability review` from

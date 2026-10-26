@@ -32,7 +32,7 @@ const SignupForm = () => {
       <CardContent>
         <ErrorAlert error={formError} />
         <Form {...form}>
-          <form onSubmit={handleFormSubmit} className="space-y-4">
+          <form onSubmit={handleFormSubmit} aria-label="Create your account" aria-busy={isLoading} className="space-y-4">
             <FullNameField form={form} />
             <EmailField form={form} />
             <UsernameField
@@ -48,7 +48,7 @@ const SignupForm = () => {
       <CardFooter className="flex justify-center">
         <p className="text-sm text-center text-muted-foreground">
           Already have an account?{' '}
-          <a href="/login" className="text-indigo-300 hover:underline">
+          <a href="/login" className="text-indigo-300 underline underline-offset-4">
             Sign in
           </a>
         </p>

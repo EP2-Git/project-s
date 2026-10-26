@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Make signup keyboard and screen-reader accessible, link password validation,
+  preserve entered values with focused failure recovery, and prevent parallel
+  account-creation attempts from repeated submit events. Authentication and
+  email-verification policy are unchanged.
+
 - Replace account-age booking guidance with a read-only saved-setup checklist,
   direct profile/meeting/availability actions, new-account link controls and
   clipboard recovery. Setup status is not a free-slot or authority guarantee.

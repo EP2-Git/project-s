@@ -14,13 +14,13 @@ const FullNameField: React.FC<FullNameFieldProps> = ({ form }) => {
     <FormField
       control={form.control}
       name="fullName"
-      render={({ field }) => (
+      render={({ field, fieldState }) => (
         <FormItem>
-          <FormLabel>Full Name</FormLabel>
+          <FormLabel className={fieldState.error ? 'text-red-700 dark:text-red-300' : undefined}>Full Name</FormLabel>
           <FormControl>
-            <Input placeholder="Example Person" maxLength={120} {...field} />
+            <Input placeholder="Example Person" autoComplete="name" maxLength={120} {...field} />
           </FormControl>
-          <FormMessage />
+          <FormMessage className="text-red-700 dark:text-red-300" />
         </FormItem>
       )}
     />

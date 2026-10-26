@@ -69,7 +69,7 @@ test('a fresh host completes saved setup and a guest books with human approval',
   await page.getByLabel('Full Name', { exact: true }).fill(hostName);
   await page.getByLabel('Email', { exact: true }).fill(hostEmail);
   await page.getByLabel('Username', { exact: true }).fill(identity);
-  await page.getByPlaceholder('••••••••', { exact: true }).fill(password);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await expect(page.getByRole('button', { name: 'Create Account', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Create Account', exact: true }).click();
 
