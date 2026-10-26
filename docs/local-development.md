@@ -117,6 +117,13 @@ matrix remains separate.
 
 ### First account and booking setup
 
+Signup labels and password visibility work with keyboard and screen readers.
+The password hint reflects the existing form validation; it does not change
+your Auth provider's policy. If account creation fails, the error receives
+focus and your entries remain available to review and retry. A username conflict
+detected on submission focuses the username field. An uncertain network result
+is not proof that an account was or was not created; use **Sign in** if needed.
+
 Open `/signup` on the local app and create a synthetic test identity. Follow any
 verification required by the checked-in local Auth configuration; its local
 mail inbox is `http://127.0.0.1:54324`. No external mail provider or hosted

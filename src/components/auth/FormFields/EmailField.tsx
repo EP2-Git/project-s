@@ -14,9 +14,9 @@ const EmailField: React.FC<EmailFieldProps> = ({ form }) => {
     <FormField
       control={form.control}
       name="email"
-      render={({ field }) => (
+      render={({ field, fieldState }) => (
         <FormItem>
-          <FormLabel>Email</FormLabel>
+          <FormLabel className={fieldState.error ? 'text-red-700 dark:text-red-300' : undefined}>Email</FormLabel>
           <FormControl>
             <Input
               type="email"
@@ -26,7 +26,7 @@ const EmailField: React.FC<EmailFieldProps> = ({ form }) => {
               {...field}
             />
           </FormControl>
-          <FormMessage />
+          <FormMessage className="text-red-700 dark:text-red-300" />
         </FormItem>
       )}
     />

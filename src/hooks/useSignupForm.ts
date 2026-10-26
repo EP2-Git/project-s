@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ export function useSignupForm() {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isUsernameTaken, setIsUsernameTaken] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const submitting = useRef(false);
   const navigate = useNavigate();
 
   const form = useForm<SignupFormValues>({
@@ -70,6 +71,8 @@ export function useSignupForm() {
   }, [form, usernameValue]);
 
   const onSubmit = async (values: SignupFormValues) => {
+    if (submitting.current) return;
+    submitting.current = true;
     setFormError(null);
     setIsLoading(true);
 
@@ -81,7 +84,7 @@ export function useSignupForm() {
         form.setError('username', {
           type: 'manual',
           message: 'This username is already taken. Please choose another one.',
-        });
+        }, { shouldFocus: true });
         return;
       }
 
@@ -110,6 +113,7 @@ export function useSignupForm() {
     } catch {
       setFormError('Failed to create account. Check your details and try again.');
     } finally {
+      submitting.current = false;
       setIsLoading(false);
     }
   };

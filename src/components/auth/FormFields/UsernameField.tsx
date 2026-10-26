@@ -20,9 +20,9 @@ const UsernameField: React.FC<UsernameFieldProps> = ({
     <FormField
       control={form.control}
       name="username"
-      render={({ field }) => (
+      render={({ field, fieldState }) => (
         <FormItem>
-          <FormLabel>Username</FormLabel>
+          <FormLabel className={fieldState.error ? 'text-red-700 dark:text-red-300' : undefined}>Username</FormLabel>
           <FormControl>
             <Input
               placeholder="johndoe"
@@ -34,8 +34,8 @@ const UsernameField: React.FC<UsernameFieldProps> = ({
               }}
             />
           </FormControl>
-          {isCheckingUsername && <p className="text-xs text-muted-foreground mt-1">Checking username...</p>}
-          <FormMessage />
+          {isCheckingUsername && <p role="status" className="text-xs text-muted-foreground mt-1">Checking username...</p>}
+          <FormMessage className="text-red-700 dark:text-red-300" />
         </FormItem>
       )}
     />
