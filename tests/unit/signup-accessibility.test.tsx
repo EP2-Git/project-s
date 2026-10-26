@@ -200,4 +200,31 @@ describe('signup accessibility and recovery', () => {
     signup.resolve(verification());
     expect(await screen.findByRole('heading', { name: '/email-verification person@example.invalid' })).toBeVisible();
   });
+
+  it('refocuses each identical immediate failure without stealing focus during retained-field edits', async () => {
+    fixtures.signUp.mockResolvedValue({ data: { session: null }, error: new Error('Synthetic immediate Auth failure') });
+    const user = userEvent.setup();
+    draw();
+    await fill();
+    const submit = screen.getByRole('button', { name: 'Create Account', exact: true });
+    await user.click(submit);
+    const firstError = await screen.findByRole('alert', { name: 'Account creation failed' });
+    await waitFor(() => expect(fixtures.signUp).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(firstError).toHaveFocus());
+
+    const fullName = screen.getByLabelText('Full Name', { exact: true });
+    await user.click(fullName);
+    await user.type(fullName, ' Revised');
+    expect(fullName).toHaveFocus();
+    expect(firstError).toBeVisible();
+    expect(fullName).toHaveValue(`${values.fullName} Revised`);
+    expect(screen.getByLabelText('Password', { exact: true })).toHaveValue(passwordValue);
+
+    await user.click(submit);
+    await waitFor(() => expect(fixtures.signUp).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByRole('alert', { name: 'Account creation failed' })).toHaveFocus());
+    expect(screen.getByRole('alert', { name: 'Account creation failed' })).toHaveTextContent(firstError.textContent ?? '');
+    expect(fullName).toHaveValue(`${values.fullName} Revised`);
+    expect(screen.getByLabelText('Password', { exact: true })).toHaveValue(passwordValue);
+  });
 });
