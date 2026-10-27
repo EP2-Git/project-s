@@ -1,8 +1,17 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { getBookingPageResponseSchema } from '@project-s/contracts';
 import { enabledCalendarDaySelector, nextMondayTarget } from '../helpers/booking-calendar-target';
+import {
+  assertLocalIsolationStack,
+  assertOtherPrincipalDenied,
+  readOwnerSnapshot,
+  seedPrivateDate,
+} from '../helpers/authenticated-owner-isolation';
 
 test.describe.configure({ retries: 0 });
+// Real signup sessions must never enter retained network traces or HAR files.
+test.use({ trace: 'off' });
 
 const expectNoBlockingAxeFindings = async (page: Page) => {
   const result = await new AxeBuilder({ page }).analyze();
@@ -53,7 +62,7 @@ const chooseFirstAvailableTime = async (page: Page) => {
   await page.keyboard.press('Enter');
 };
 
-test('a fresh host completes saved setup and a guest books with human approval', async ({
+test('a fresh host books with human approval while another signed-up host remains isolated', async ({
   browser,
   browserName,
   page,
@@ -66,6 +75,7 @@ test('a fresh host completes saved setup and a guest books with human approval',
   const password = `Local-${crypto.randomUUID()}-Aa1!`;
 
   await page.goto('/signup');
+  await assertLocalIsolationStack(page);
   await page.getByLabel('Full Name', { exact: true }).fill(hostName);
   await page.getByLabel('Email', { exact: true }).fill(hostEmail);
   await page.getByLabel('Username', { exact: true }).fill(identity);
@@ -175,6 +185,129 @@ test('a fresh host completes saved setup and a guest books with human approval',
     await guestContext.close();
   }
 
+  const privateDateMarker = `Synthetic private date ${identity}`;
+  await seedPrivateDate(page, privateDateMarker);
+  const ownerBefore = await readOwnerSnapshot(page);
+  expect(ownerBefore.profiles[0].username).toBe(identity);
+  expect(ownerBefore.profiles[0].timezone).toBe('America/Halifax');
+  expect(ownerBefore.weekly.map(({ weekday }) => weekday).sort()).toEqual([1]);
+  expect(ownerBefore.bookings).toHaveLength(1);
+  expect(ownerBefore.bookings[0].status).toBe('confirmed');
+
+  const otherContext = await browser.newContext({
+    viewport: { width: 1280, height: 900 },
+    timezoneId: 'UTC',
+  });
+  try {
+    const other = await otherContext.newPage();
+    const origin = new URL(page.url()).origin;
+    const otherIdentity = `other-${crypto.randomUUID().replaceAll('-', '').slice(0, 18)}`;
+    const otherName = `Independent ${browserName} Host`;
+    const otherMeetingTitle = `Independent ${browserName} conversation`;
+
+    await other.goto(`${origin}/signup`);
+    await assertLocalIsolationStack(other);
+    await other.getByLabel('Full Name', { exact: true }).fill(otherName);
+    await other.getByLabel('Email', { exact: true }).fill(`${otherIdentity}@example.invalid`);
+    await other.getByLabel('Username', { exact: true }).fill(otherIdentity);
+    await other.getByLabel('Password', { exact: true }).fill(`Local-${crypto.randomUUID()}-Bb2!`);
+    const createAccount = other.getByRole('button', { name: 'Create Account', exact: true });
+    await expect(createAccount).toBeEnabled();
+    await createAccount.click();
+    await expect(other).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
+
+    const otherSetup = other.getByRole('region', { name: 'Booking setup', exact: true });
+    await expect(otherSetup.getByRole('heading', { name: 'Finish your booking setup' })).toBeVisible();
+    await otherSetup.getByRole('button', { name: 'Meeting types', exact: true }).click();
+    await other.getByRole('button', { name: 'Create a Meeting Type', exact: true }).click();
+    await other.getByLabel('Title *', { exact: true }).fill(otherMeetingTitle);
+    await other.getByLabel('Duration (minutes) *', { exact: true }).fill('20');
+    await other.getByRole('button', { name: 'Create Meeting Type', exact: true }).click();
+    await expect(other.getByRole('heading', { name: otherMeetingTitle, exact: true })).toBeVisible();
+    await other.getByRole('button', { name: 'Overview', exact: true }).click();
+    await seedPrivateDate(other, `Synthetic private date ${otherIdentity}`);
+
+    const otherBefore = await readOwnerSnapshot(other);
+    expect(otherBefore.ownerId).not.toBe(ownerBefore.ownerId);
+    expect(otherBefore.profiles[0].username).toBe(otherIdentity);
+    expect(otherBefore.profiles[0].full_name).toBe(otherName);
+    expect(otherBefore.profiles[0].timezone).toBe('UTC');
+    expect(otherBefore.weekly.map(({ weekday }) => weekday).sort()).toEqual([1, 2, 3, 4, 5]);
+    expect(otherBefore.bookings).toEqual([]);
+
+    await otherSetup.getByRole('link', { name: 'Profile and timezone', exact: true }).click();
+    await expect(other.getByLabel('Full Name', { exact: true })).toHaveValue(otherName);
+    await expect(other.getByLabel('Username', { exact: true })).toHaveValue(otherIdentity);
+    await expect(other.getByLabel('Times shown in', { exact: true })).toHaveValue('UTC');
+    await other.goto(`${origin}/dashboard`);
+
+    // UI filters are useful, but the direct authenticated probes below must also
+    // deny A's known IDs. A second account is not an anonymous-denial substitute.
+    for (const reload of [false, true]) {
+      if (reload) await other.reload();
+      await expect(otherSetup.getByRole('heading', { name: 'Your setup is saved' })).toBeVisible();
+      await expect(other.getByRole('link', { name: 'Open link', exact: true })).toHaveAttribute('href', `${origin}/book/${otherIdentity}`);
+      await otherSetup.getByRole('button', { name: 'Meeting types', exact: true }).click();
+      await expect(other.getByRole('heading', { name: otherMeetingTitle, exact: true })).toBeVisible();
+      await expect(other.getByRole('heading', { name: 'Fresh signup conversation', exact: true })).toHaveCount(0);
+      await other.getByRole('button', { name: 'Availability', exact: true }).click();
+      await expect(other.getByRole('switch', { name: 'Set Wednesday availability', exact: true })).toBeChecked();
+      await expect(other.getByRole('switch', { name: 'Set Monday availability', exact: true })).toBeChecked();
+      await other.getByRole('button', { name: 'Bookings', exact: true }).click();
+      await expect(other.getByText('No bookings found', { exact: true })).toBeVisible();
+      await expect(other.getByRole('row').filter({ hasText: guestName })).toHaveCount(0);
+      await other.getByRole('button', { name: 'Overview', exact: true }).click();
+    }
+
+    const isolation = await assertOtherPrincipalDenied(other, ownerBefore);
+    expect(isolation.principalId).toBe(otherBefore.ownerId);
+    expect(await readOwnerSnapshot(page)).toEqual(ownerBefore);
+    expect(await readOwnerSnapshot(other)).toEqual(otherBefore);
+
+    // Published booking-page data remains intentionally public to B. Strict
+    // v1 parsing and canaries distinguish it from A's private table records.
+    const publicPageResponse = other.waitForResponse((response) => (
+      response.request().method() === 'GET'
+      && new URL(response.url()).pathname === `/api/v1/public/booking-pages/${identity}`
+    ));
+    await other.goto(`${origin}/book/${identity}`);
+    const publicResponse = await publicPageResponse;
+    expect(publicResponse.ok()).toBe(true);
+    const published = getBookingPageResponseSchema.parse(await publicResponse.json());
+    expect(published.data.username).toBe(identity);
+    expect(published.data.displayName).toBe(`${hostName} Ready`);
+    expect(published.data.meetingTypes).toHaveLength(1);
+    expect(published.data.meetingTypes[0].meetingTypeId).toBe(ownerBefore.meetingTypes[0].id);
+    const publishedJson = JSON.stringify(published);
+    expect(publishedJson).not.toContain(ownerBefore.ownerId);
+    expect(publishedJson).not.toContain(ownerBefore.bookings[0].id);
+    expect(publishedJson).not.toContain(privateDateMarker);
+    await expect(other.getByRole('heading', { name: `Book time with ${hostName} Ready` })).toBeVisible();
+
+    await other.goto(`${origin}/dashboard`);
+    await expect(otherSetup.getByRole('heading', { name: 'Your setup is saved' })).toBeVisible();
+    await expect(other.getByRole('link', { name: 'Open link', exact: true })).toHaveAttribute('href', `${origin}/book/${otherIdentity}`);
+    expect(await readOwnerSnapshot(page)).toEqual(ownerBefore);
+    expect(await readOwnerSnapshot(other)).toEqual(otherBefore);
+    await other.setViewportSize({ width: 390, height: 844 });
+    await expectNoBlockingAxeFindings(other);
+    expect(await other.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await test.info().attach('independent-host-private-dashboard', {
+      body: await other.screenshot({ fullPage: true }),
+      contentType: 'image/png',
+    });
+    await test.info().attach('authenticated-isolation-verdicts', {
+      body: Buffer.from(JSON.stringify({
+        distinctPrincipals: true,
+        unchangedOwnerAndOtherSnapshots: true,
+        probes: isolation.probes.map(({ label, status, code, rowCount }) => ({ label, status, code, rowCount })),
+      }, null, 2)),
+      contentType: 'application/json',
+    });
+  } finally {
+    await otherContext.close();
+  }
+
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.reload();
   await page.getByRole('button', { name: 'Bookings', exact: true }).click();
@@ -185,5 +318,10 @@ test('a fresh host completes saved setup and a guest books with human approval',
   await expect(booking).toContainText('cancelled');
   await page.getByRole('button', { name: 'Overview', exact: true }).click();
   await expect(page.getByText(guestName, { exact: true })).toHaveCount(0);
+  const ownerAfterCancellation = await readOwnerSnapshot(page);
+  expect(ownerAfterCancellation.bookings[0].status).toBe('cancelled');
+  expect(ownerAfterCancellation.bookings[0].version).toBe(ownerBefore.bookings[0].version + 1);
+  expect(ownerAfterCancellation.bookings[0].canceled_by).toBe('host');
+  expect(ownerAfterCancellation.bookings[0].canceled_at).not.toBeNull();
 });
 

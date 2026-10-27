@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Add authenticated browser/API ownership regressions with two fresh accounts,
+  private-data denial and unchanged-record checks, while preserving public
+  booking access and successful cancellation by the actual host. No permission
+  or application behavior changes are introduced by this test evidence.
+
 - Make signup keyboard and screen-reader accessible, link password validation,
   preserve entered values with focused failure recovery, and prevent parallel
   account-creation attempts from repeated submit events. Authentication and
