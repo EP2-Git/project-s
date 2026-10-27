@@ -46,6 +46,31 @@ project at a time (`npm run test:e2e -- --project=chromium`) and respect its nor
 quotas. Reset only a database you have explicitly identified as disposable. The
 CI resets are not permission to reset an existing developer instance.
 
+### Authenticated owner isolation
+
+The fresh-host booking scenario signs up two independent synthetic accounts
+through the normal UI. Both have positive controls for their own saved setup.
+The second account probes the first host's private rows using its genuine
+browser client, then the first host's records are compared with their earlier
+snapshot and the first host cancels the existing booking through the UI. The
+second account must still be able to view the first host's public booking page.
+This reuses the single guest booking and normal abuse quotas.
+
+The test rejects non-loopback app/backend configuration before signup and keeps
+session credentials entirely inside the browser. Network traces are disabled for
+this real-Auth scenario so retained failure artifacts cannot capture session or
+Authorization headers. Do not attach session/storage objects or raw responses;
+report only sanitized verdicts and synthetic UI screenshots.
+
+Foreign reads must return no rows. RLS-filtered updates/deletes must return no
+represented rows, followed by unchanged-owner checks; HTTP 204 alone is not
+proof. Grant-denied writes and forged-owner inserts must have their expected
+permission errors. Known-foreign and unknown booking cancellation must have the
+same minimal not-found response. These are internal owner/PostgREST probes, not
+additional public v1 operations. This supplements the SQL role matrix; it does
+not prove tenancy, delegated authority, monitoring permissions or independent
+human evaluation.
+
 ## Required release thresholds
 
 - lint: 0 errors and 0 warnings;
