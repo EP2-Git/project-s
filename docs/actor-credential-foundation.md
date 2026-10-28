@@ -78,10 +78,12 @@ dblink sessions observe actual principal-fence waits, then prove that expiry
 during that wait and committed revocation deny the later lookup. All test data
 is synthetic; the dblink fixture is only for the disposable local/CI stack.
 
-This is an unexposed foundation. Reviewed profiles, mandate issuance/approval,
+This is an unexposed foundation. The separate
+[reviewed profile foundation](reviewed-booker-profile-foundation.md) adds private
+create/delete controls and a genuine disposable Auth-to-RPC proof. Mandate issuance/approval,
 permission scope and one-use budget, step-up, receipt serializers and privacy,
 retention cleanup/tombstones, offline recovery/epoch invalidation, real
-Auth-to-RPC transport integration and issuer UI remain required. Full current-head
+actor transport integration and issuer UI remain required. Full current-head
 CI, exact generated-type comparison and v1 browser/race regressions still gate
 merge. An independent evaluator and bilateral agent proof remain separate.
 

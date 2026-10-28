@@ -44,6 +44,9 @@ local data while evaluating it.
 - [Private actor credential foundation](actor-credential-foundation.md) —
   synthetic-only verifier storage and revocation; no configured instance,
   delegated route or booking permission.
+- [Private reviewed booker profiles](reviewed-booker-profile-foundation.md) —
+  immutable reviewed details, explicit PII deletion and disposable Auth/RPC proof;
+  routes, mandates and expiry cleanup remain gated.
 - [TypeScript SDK](../packages/sdk/README.md) — source-workspace client usage.
 - [Local stdio MCP](mcp-local-stdio.md) and
   [tool manifest](mcp-tool-manifest.md) — the client-launched MCP adapter.

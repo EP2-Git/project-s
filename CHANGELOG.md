@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Add private reviewed booker profile creation/deletion under the existing
+  principal fence, with server-derived seven-day validity, atomic PII removal,
+  minimal audit and real Auth-to-RPC regression proof. No instance, route,
+  delegated booking or monitoring access is enabled; cleanup remains gated.
+
 - Add authenticated browser/API ownership regressions with two fresh accounts,
   private-data denial and unchanged-record checks, while preserving public
   booking access and successful cancellation by the actual host. No permission
