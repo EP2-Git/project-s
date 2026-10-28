@@ -355,6 +355,18 @@ export type Database = {
         Args: { p_context: Json; p_request: Json }
         Returns: Json
       }
+      project_s_create_booker_profile_v2: {
+        Args: { p_context: Json; p_profile: Json; p_profile_id: string }
+        Returns: Json
+      }
+      project_s_delete_booker_profile_v2: {
+        Args: {
+          p_context: Json
+          p_expected_revision: number
+          p_profile_id: string
+        }
+        Returns: Json
+      }
       project_s_get_actor_credential_v2: {
         Args: {
           p_credential_id: string
