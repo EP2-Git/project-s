@@ -22,20 +22,32 @@ const refusal = async (operation, code, status) => {
 
 async function main() {
   check(process.env.PROJECT_S_DISPOSABLE_AUTHORITY_TEST === '1');
-  stage = 'owned local stack preflight';
+  stage = 'owned local stack doctor';
   const doctor = await collectDoctor();
-  check(doctor.ok && doctor.state.markerMatches);
+  if (!doctor.ok) {
+    // Only fixed doctor identifiers, never messages, paths or configuration.
+    const failed = doctor.checks.filter((item) => item.status === 'FAIL')
+      .map((item) => item.id).filter((id) => /^[a-z0-9-]+$/.test(id));
+    stage = `owned local stack doctor (${failed.join(',')})`;
+    check(false);
+  }
+  stage = 'bootstrap container identity';
+  check(doctor.state.markerMatches);
+  stage = 'disposable project identifier';
   const config = readFileSync('supabase/config.toml', 'utf8');
   check(/^project_id\s*=\s*"project-s-local"\s*$/m.test(config));
+  stage = 'local CLI status';
   const status = spawnSync(process.execPath,
     ['node_modules/supabase/dist/supabase.js', 'status', '-o', 'env'],
     { encoding: 'utf8', windowsHide: true, timeout: 20_000, maxBuffer: 256 * 1024 });
   check(!status.error && status.status === 0);
   const values = parseEnv(status.stdout);
+  stage = 'local API origin';
   const origin = new URL(values.API_URL);
   check(origin.protocol === 'http:' && origin.hostname === '127.0.0.1' &&
     origin.port === '54321' && origin.pathname === '/' && !origin.search &&
     !origin.hash && !origin.username && !origin.password);
+  stage = 'local API key availability';
   check(typeof values.ANON_KEY === 'string' && values.ANON_KEY.length > 0 &&
     typeof values.SERVICE_ROLE_KEY === 'string' && values.SERVICE_ROLE_KEY.length > 0);
 

@@ -50,7 +50,7 @@ CI resets are not permission to reset an existing developer instance.
 
 The private [reviewed profile foundation](reviewed-booker-profile-foundation.md)
 has shared Node/Edge adapter vectors and disposable pgTAP lifecycle/wait tests.
-After bootstrap and database tests, `PROJECT_S_DISPOSABLE_AUTHORITY_TEST=1 npm run
+After a verified bootstrap, `PROJECT_S_DISPOSABLE_AUTHORITY_TEST=1 npm run
 test:authority:live` exercises genuine Auth-to-service-RPC controls on the owned
 loopback stack. It refuses preexisting authority configuration, keeps secrets in
 memory, redacts failures and removes only its synthetic fixtures. This is not a

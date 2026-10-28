@@ -111,6 +111,10 @@ jobs:
         run: npm run bootstrap -- --skip-install
       - name: Prove existing data refusal and reuse preservation
         run: node scripts/check-local-bootstrap.mjs
+      - name: Prove real Auth-to-RPC reviewed profile controls on the verified bootstrap
+        run: npm run test:authority:live
+        env:
+          PROJECT_S_DISPOSABLE_AUTHORITY_TEST: '1'
       - run: npm run db:reset
       - name: Prove a second clean reset
         run: npm run db:reset
@@ -118,10 +122,6 @@ jobs:
       - run: npm run test:db
       - run: npm run test:concurrency
       - run: npm run types:check
-      - name: Prove real Auth-to-RPC reviewed profile controls on the disposable stack
-        run: npm run test:authority:live
-        env:
-          PROJECT_S_DISPOSABLE_AUTHORITY_TEST: '1'
       # Bootstrap generated .env.local. Keep these extra API calls on this
       # runner so their normal rate-limit buckets cannot affect browser tests.
       - name: Exercise runnable examples against the real local API
