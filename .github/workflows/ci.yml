@@ -96,7 +96,8 @@ jobs:
       - name: Verify installation and checks preserve the source checkout
         shell: bash
         run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
+          source_status="$(git status --porcelain)"
+          if [[ -n "$source_status" ]]; then
             git status --short
             git diff --summary
             exit 1
