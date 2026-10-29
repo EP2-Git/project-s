@@ -93,6 +93,15 @@ jobs:
         run: npm run test:setup
       - name: Runnable example transport and registry checks
         run: npm run test:examples
+      - name: Verify installation and checks preserve the source checkout
+        shell: bash
+        run: |
+          source_status="$(git status --porcelain)"
+          if [[ -n "$source_status" ]]; then
+            git status --short
+            git diff --summary
+            exit 1
+          fi
 
   database:
     name: Reproducible database and RLS
