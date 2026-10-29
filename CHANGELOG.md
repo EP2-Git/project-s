@@ -4,8 +4,8 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-- Preserve a clean Linux/macOS source checkout after npm installation by tracking
-  the MCP CLI entrypoint as executable. Its script contents and runtime behavior
+- Preserve a clean source checkout after npm installation by tracking the MCP
+  CLI entrypoint as executable with LF line endings on every OS. Its contents and runtime behavior
   are unchanged; clean-install CI now detects source changes after setup checks.
 
 - Add private reviewed booker profile creation/deletion under the existing
