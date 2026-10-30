@@ -139,6 +139,48 @@ jobs:
         if: always()
         run: npm run db:stop
 
+  local-demo:
+    name: Repeatable local demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npx playwright install --with-deps chromium
+      - name: Prove fresh setup and two account-to-deletion cycles
+        run: node scripts/local-demo.mjs
+      - name: Upload sanitized demo proof
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: local-demo-disposable-identities
+          path: output/playwright/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Stop only the verified demo project
+        if: always()
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { existsSync } from 'node:fs';
+          import { spawnSync } from 'node:child_process';
+          import { assertLocalDemoStack } from './scripts/lib/local-demo-stack.mjs';
+          if (!existsSync('.cache/local-demo-stack/marker.json')) process.exit(0);
+          let context;
+          try { context = await assertLocalDemoStack(); }
+          catch { console.log('No verified ready demo stack; partial data remains on this disposable runner.'); process.exit(0); }
+          const result = spawnSync(process.execPath, ['node_modules/supabase/dist/supabase.js',
+            '--workdir', context.workdir, 'stop'], { stdio: 'ignore', timeout: 60_000 });
+          if (result.error || result.status !== 0) process.exitCode = 1;
+          NODE
+
   e2e:
     name: Browser and accessibility
     needs: [quality, database]
