@@ -12,6 +12,7 @@ dist
 dist-ssr
 coverage
 playwright-report
+output/playwright/
 test-results
 .cache
 .temp-supabase

@@ -133,6 +133,10 @@ guarantees, application-wide coverage claims, or third-party certification. See
 
 ## Local quick start
 
+For a repeatable signup, setup, booking and operator account-cleanup walkthrough,
+use the [isolated local demo](docs/local-repeatable-demo.md). It uses real local
+backend operations with disposable identities and preserves existing stacks.
+
 Prerequisites: Node.js 22.12 or newer, npm 10.9 or newer, Docker Desktop (or a compatible Docker engine), and Git.
 
 ```sh

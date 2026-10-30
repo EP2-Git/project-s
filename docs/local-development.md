@@ -1,5 +1,9 @@
 # Local bootstrap and doctor
 
+For the isolated signup-to-booking-to-account-cleanup walkthrough, see the
+[repeatable local demo](local-repeatable-demo.md). It uses a separately owned
+project and preserves retained data from this normal development stack.
+
 Use a fresh, unlinked clone with Git, Node.js 22.12+ (see `.nvmrc`), npm 10.9+,
 and a running local Docker engine. Docker Desktop is suitable on Windows and
 macOS. No hosted Supabase project, access token, or production credentials are

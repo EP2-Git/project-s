@@ -19,6 +19,9 @@ behavior from future direction; a roadmap item is not a shipped capability.
 
 ## I want to run Project S
 
+- [Repeatable local demo](local-repeatable-demo.md) — actual signup, setup,
+  guest booking, host cancellation and guarded operator account cleanup, twice
+  on a separately owned local stack.
 - [Local development](local-development.md) — prerequisites, setup, and normal
   development commands.
 - [Self-hosting](self-hosting.md) — deployment boundary, environment separation,

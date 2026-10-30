@@ -4,6 +4,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Add a repeatable local signup-to-booking demo with a separately owned,
+  localhost-bound backend and guarded cleanup of its own disposable accounts.
+  Audit and abuse-limit records remain; public account-deletion behavior is unchanged.
+
 - Preserve a clean source checkout after npm installation by tracking the MCP
   CLI entrypoint as executable with LF line endings on every OS. Its contents and runtime behavior
   are unchanged; clean-install CI now detects source changes after setup checks.
