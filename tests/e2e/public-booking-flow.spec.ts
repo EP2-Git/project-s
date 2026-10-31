@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { enabledCalendarDaySelector, nextMondayTarget } from '../helpers/booking-calendar-target';
 
 test.describe.configure({ retries: 0 });
 
@@ -12,48 +13,35 @@ const expectNoBlockingAxeFindings = async (page: Page) => {
   expect(blocking).toEqual([]);
 };
 
-const chooseAvailableSlot = async (page: Page, slotIndex: number) => {
+const chooseAvailableSlot = async (page: Page, slotIndex: number, initialDate: string) => {
   const slots = page.locator('button[aria-label^="Select "]');
   const noSlots = page.getByText("No available time slots for this date.");
   await expect(slots.first().or(noSlots)).toBeVisible();
 
-  if (await slots.nth(slotIndex).isVisible().catch(() => false)) {
-    await slots.nth(slotIndex).focus();
-    await page.keyboard.press("Enter");
-    return;
-  }
-
+  // The seeded host works weekdays. A strictly future Monday remains inside
+  // its 60-day horizon even when this month ends with elapsed hours/weekends.
+  // Use the app's initial requested date so its visible month and guest
+  // timezone agree, even if the host's date differs or midnight passes here.
+  const target = nextMondayTarget(initialDate);
   const calendar = page.locator('section[aria-labelledby="select-date-title"]');
-  const candidateDays = calendar.locator('button[name="day"]:not([disabled])');
-  const candidateCount = await candidateDays.count();
-
-  for (let index = 0; index < candidateCount; index += 1) {
-    const candidate = candidateDays.nth(index);
-    if ((await candidate.getAttribute("aria-selected")) === "true") continue;
-
-    const slotsResponse = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().includes("/api/v1/public/free-slots/search"),
-      { timeout: 10_000 },
-    );
-
-    await candidate.click();
-    await slotsResponse;
-
-    const slotBecameVisible = await slots
-      .nth(slotIndex)
-      .waitFor({ state: "visible", timeout: 5_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (slotBecameVisible) {
-      await slots.nth(slotIndex).focus();
-      await page.keyboard.press("Enter");
-      return;
-    }
+  if (target.advanceMonth) {
+    await calendar.getByRole('button', { name: /go to next month/i }).click();
   }
-
-  throw new Error("The seeded host did not expose an available slot in the visible calendar.");
+  const day = calendar.locator(enabledCalendarDaySelector)
+    .filter({ hasText: new RegExp(`^${target.day}$`) });
+  await expect(day).toHaveCount(1);
+  const searched = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && response.url().includes('/api/v1/public/free-slots/search')
+    && response.request().postDataJSON().date === target.dateKey
+  ));
+  await day.click();
+  expect((await searched).ok()).toBe(true);
+  await expect(page.locator('section[aria-labelledby="available-times-title"] [aria-busy]'))
+    .toHaveAttribute('aria-busy', 'false');
+  await expect(slots.nth(slotIndex)).toBeVisible({ timeout: 5_000 });
+  await slots.nth(slotIndex).focus();
+  await page.keyboard.press('Enter');
 };
 
 const addDays = (dateKey: string, days: number) => {
@@ -208,13 +196,19 @@ test("a guest books and the host cancels through the seeded local stack", async 
   const guestName = `E2E ${browserName} Guest ${Date.now()}`;
   const guestEmail = `e2e-${Date.now()}@example.invalid`;
 
+  const initialSearch = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && response.url().includes('/api/v1/public/free-slots/search')
+  ));
   await page.goto("/book/demo-host");
   await expect(
     page.getByRole("heading", { name: "Book time with Demo Host" }),
   ).toBeVisible();
   await expectNoBlockingAxeFindings(page);
 
-  await chooseAvailableSlot(page, slotIndex);
+  const initial = await initialSearch;
+  expect(initial.ok()).toBe(true);
+  await chooseAvailableSlot(page, slotIndex, initial.request().postDataJSON().date);
   await page.getByLabel("Your name").fill(guestName);
   await page.getByLabel("Your email").fill(guestEmail);
   await page.getByLabel("Notes").fill("Synthetic browser-flow booking.");
