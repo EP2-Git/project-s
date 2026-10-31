@@ -34,7 +34,7 @@ const chooseAvailableSlot = async (page: Page, slotIndex: number, initialDate: s
     response.request().method() === 'POST'
     && response.url().includes('/api/v1/public/free-slots/search')
     && response.request().postDataJSON().date === target.dateKey
-  ));
+  ), { timeout: 10_000 });
   await day.click();
   expect((await searched).ok()).toBe(true);
   await expect(page.locator('section[aria-labelledby="available-times-title"] [aria-busy]'))
@@ -199,7 +199,7 @@ test("a guest books and the host cancels through the seeded local stack", async 
   const initialSearch = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && response.url().includes('/api/v1/public/free-slots/search')
-  ));
+  ), { timeout: 10_000 });
   await page.goto("/book/demo-host");
   await expect(
     page.getByRole("heading", { name: "Book time with Demo Host" }),
