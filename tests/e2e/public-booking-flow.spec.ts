@@ -3,6 +3,9 @@ import { expect, type Page, test } from "@playwright/test";
 import { enabledCalendarDaySelector, nextMondayTarget } from '../helpers/booking-calendar-target';
 
 test.describe.configure({ retries: 0 });
+// Keep the seeded host's weekday fixture stable on contributors' machines as
+// well as CI, while retaining UTC guest / Halifax host timezone coverage.
+test.use({ timezoneId: 'UTC' });
 
 const expectNoBlockingAxeFindings = async (page: Page) => {
   const results = await new AxeBuilder({ page }).analyze();
@@ -208,7 +211,9 @@ test("a guest books and the host cancels through the seeded local stack", async 
 
   const initial = await initialSearch;
   expect(initial.ok()).toBe(true);
-  await chooseAvailableSlot(page, slotIndex, initial.request().postDataJSON().date);
+  const initialQuery = initial.request().postDataJSON();
+  expect(initialQuery.displayTimeZone).toBe('UTC');
+  await chooseAvailableSlot(page, slotIndex, initialQuery.date);
   await page.getByLabel("Your name").fill(guestName);
   await page.getByLabel("Your email").fill(guestEmail);
   await page.getByLabel("Notes").fill("Synthetic browser-flow booking.");
