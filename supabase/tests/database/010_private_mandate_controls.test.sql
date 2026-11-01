@@ -261,6 +261,22 @@ select is(pg_temp.mandate_approve('d0500000-0000-4000-8000-000000000002',
 select ok((select policy_summary is null from private.v2_mandate_reviews
   where review_id='d0500000-0000-4000-8000-000000000002'),
   'successful approval redacts copied review PII while retaining immutable linkage');
+insert into mandate_results values ('sequence-before-expired-review-retry',to_jsonb((select event_sequence
+  from private.v2_authority_principals where principal_id='d0100000-0000-4000-8000-000000000001')));
+with deadline as (select clock_timestamp()-interval '1 minute' as expired_at)
+update private.v2_mandate_reviews set reviewed_at=deadline.expired_at-interval '5 minutes',
+  expires_at=deadline.expired_at from deadline
+  where review_id='d0500000-0000-4000-8000-000000000002';
+select is(pg_temp.mandate_approve('d0500000-0000-4000-8000-000000000002',
+  'd0600000-0000-4000-8000-000000000098',p_digest=>(select value->>'summaryDigest' from mandate_results where key='fresh-review')),
+  (select value from mandate_results where key='approved'),
+  'expired review deadline does not erase an already-approved exact original mandate acknowledgement');
+select is(to_jsonb((select event_sequence from private.v2_authority_principals
+  where principal_id='d0100000-0000-4000-8000-000000000001')),
+  (select value from mandate_results where key='sequence-before-expired-review-retry'),
+  'reconciliation after review expiry does not issue another event or advance the principal sequence');
+select is((select count(*)::integer from private.v2_mandates),1,
+  'reconciliation after review expiry preserves exactly one original booking budget');
 insert into mandate_results values ('metadata',public.project_s_get_mandate_v2(pg_temp.mandate_context(),
   'd0600000-0000-4000-8000-000000000001'));
 select is((select array_agg(key order by key) from jsonb_object_keys(
