@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Add private principal-only mandate review, exact approval, inspection and
+  revocation, with atomic reviewed-profile dependent invalidation and minimal
+  audit. No instance, public control, delegated booking or monitoring access is
+  enabled; retention, recovery and full booking proof remain gated.
+
 - Add a repeatable local signup-to-booking demo with a separately owned,
   localhost-bound backend and guarded cleanup of its own disposable accounts.
   Audit and abuse-limit records remain; public account-deletion behavior is unchanged.
