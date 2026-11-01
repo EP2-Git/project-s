@@ -57,6 +57,13 @@ memory, redacts failures and removes only its synthetic fixtures. This is not a
 public route, delegated booking or cleanup/monitoring proof. Local, hosted and
 mock evidence must be reported separately.
 
+The [private mandate controls](private-mandate-controls.md) extend this same
+owned-stack proof with principal review/approval/get/revoke, exact retries,
+wrong-principal/actor/direct-client denials and atomic profile-dependent
+invalidation. Additional pgTAP/dblink fixtures test live state, stale reviews,
+expiry after actual waits and transactional audit failure. Shared Node/Deno
+adapter vectors do not substitute for those live database tests.
+
 ### Authenticated owner isolation
 
 The fresh-host booking scenario signs up two independent synthetic accounts

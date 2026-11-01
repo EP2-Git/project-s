@@ -65,10 +65,10 @@ an unavailable local Docker engine is not local integration evidence.
 
 Expiry is enforced on retries, but does not yet purge stored PII. Expired/orphan
 cleanup, bounded audit/tombstone retention and recovery remain required before
-enablement. There are no mandates yet: future mandate storage must add atomic
+enablement. The [private mandate controls](private-mandate-controls.md) add atomic
 dependent invalidation under this same fence before profile deletion can
-acknowledge success. This unit does not prove that unimplemented behavior.
-Mandate review/approval, one-use commit, step-up, receipts, mixed v1/v2 races,
+acknowledge success. Their separate migration and tests cover that behavior.
+One-use commit, step-up, receipts, mixed v1/v2 races,
 issuer UI and genuine authorized monitoring remain separate work. Explicit
 reviewed synthetic enablement is still required after the complete proof.
 

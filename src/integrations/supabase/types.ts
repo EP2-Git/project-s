@@ -355,8 +355,22 @@ export type Database = {
         Args: { p_context: Json; p_request: Json }
         Returns: Json
       }
+      project_s_approve_mandate_v2: {
+        Args: {
+          p_context: Json
+          p_expected_revision: number
+          p_mandate_id: string
+          p_review_id: string
+          p_summary_digest: string
+        }
+        Returns: Json
+      }
       project_s_create_booker_profile_v2: {
         Args: { p_context: Json; p_profile: Json; p_profile_id: string }
+        Returns: Json
+      }
+      project_s_create_mandate_review_v2: {
+        Args: { p_context: Json; p_policy: Json; p_review_id: string }
         Returns: Json
       }
       project_s_delete_booker_profile_v2: {
@@ -375,6 +389,10 @@ export type Database = {
         }
         Returns: Json
       }
+      project_s_get_mandate_v2: {
+        Args: { p_context: Json; p_mandate_id: string }
+        Returns: Json
+      }
       project_s_register_actor_v2: {
         Args: {
           p_actor_id: string
@@ -391,6 +409,14 @@ export type Database = {
           p_actor_id: string
           p_context: Json
           p_expected_revision: number
+        }
+        Returns: Json
+      }
+      project_s_revoke_mandate_v2: {
+        Args: {
+          p_context: Json
+          p_expected_revision: number
+          p_mandate_id: string
         }
         Returns: Json
       }

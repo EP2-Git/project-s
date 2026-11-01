@@ -63,7 +63,9 @@ retention and genuine authorized monitoring remain gated.
 
 The [reviewed profile foundation](docs/reviewed-booker-profile-foundation.md)
 adds private normalized profile creation/deletion and real Auth-to-RPC proof.
-Mandates, dependent invalidation, expiry cleanup and public controls remain
+The [private mandate controls](docs/private-mandate-controls.md) add exact
+principal-only review, approval and revocation with profile-dependent
+invalidation. Delegated booking, expiry cleanup and public controls remain
 required before the separate synthetic enablement review.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
