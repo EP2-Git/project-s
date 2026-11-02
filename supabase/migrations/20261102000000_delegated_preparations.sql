@@ -359,9 +359,10 @@ begin
       perform private.v2_assert_account(c.principal_id);
       v_audience:=private.v2_assert_instance(c.instance_id,c.epoch);
       v_final_now:=clock_timestamp();
-      if v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
+      if v_credential.issued_at>v_final_now or v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
       if v_profile.expires_at<=v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
       if v_mandate.expires_at<=v_final_now then raise exception sqlstate 'PT410' using message='MANDATE_EXPIRED'; end if;
+      if (v_mandate.policy->>'notBefore')::timestamptz>v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
       if v_preparation.expires_at<=v_final_now then raise exception sqlstate 'PT409' using message='VERSION_CONFLICT'; end if;
       if v_start<v_final_now+(v_snapshot->>'minimumNoticeMinutes')::integer*interval '1 minute'
         or v_end>v_final_now+(v_snapshot->>'maximumAdvanceDays')::integer*interval '1 day'
@@ -388,9 +389,10 @@ begin
       perform private.v2_assert_account(c.principal_id);
       v_audience:=private.v2_assert_instance(c.instance_id,c.epoch);
       v_final_now:=clock_timestamp();
-      if v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
+      if v_credential.issued_at>v_final_now or v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
       if v_profile.expires_at<=v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
       if v_mandate.expires_at<=v_final_now then raise exception sqlstate 'PT410' using message='MANDATE_EXPIRED'; end if;
+      if (v_mandate.policy->>'notBefore')::timestamptz>v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
       if v_review.expires_at<=v_final_now then raise exception sqlstate 'PT409' using message='VERSION_CONFLICT'; end if;
       if v_start<v_final_now+(v_snapshot->>'minimumNoticeMinutes')::integer*interval '1 minute'
         or v_end>v_final_now+(v_snapshot->>'maximumAdvanceDays')::integer*interval '1 day'
@@ -436,9 +438,10 @@ begin
     perform private.v2_assert_account(c.principal_id);
     v_audience:=private.v2_assert_instance(c.instance_id,c.epoch);
     v_final_now:=clock_timestamp();
-    if v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
+    if v_credential.issued_at>v_final_now or v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
     if v_profile.expires_at<=v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
     if v_mandate.expires_at<=v_final_now then raise exception sqlstate 'PT410' using message='MANDATE_EXPIRED'; end if;
+    if (v_mandate.policy->>'notBefore')::timestamptz>v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
     if v_preparation.expires_at<=v_final_now then raise exception sqlstate 'PT409' using message='VERSION_CONFLICT'; end if;
     if v_start<v_final_now+(v_snapshot->>'minimumNoticeMinutes')::integer*interval '1 minute'
       or v_end>v_final_now+(v_snapshot->>'maximumAdvanceDays')::integer*interval '1 day'
@@ -480,9 +483,10 @@ begin
   perform private.v2_assert_account(c.principal_id);
   v_audience:=private.v2_assert_instance(c.instance_id,c.epoch);
   v_final_now:=clock_timestamp();
-  if v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
+  if v_credential.issued_at>v_final_now or v_credential.expires_at<=v_final_now then raise exception sqlstate 'PT401' using message='AUTHENTICATION_REQUIRED'; end if;
   if v_profile.expires_at<=v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
   if v_mandate.expires_at<=v_final_now then raise exception sqlstate 'PT410' using message='MANDATE_EXPIRED'; end if;
+  if (v_mandate.policy->>'notBefore')::timestamptz>v_final_now then raise exception sqlstate 'PT403' using message='FORBIDDEN'; end if;
   if v_review.expires_at<=v_final_now then raise exception sqlstate 'PT409' using message='VERSION_CONFLICT'; end if;
   if v_start<v_final_now+(v_snapshot->>'minimumNoticeMinutes')::integer*interval '1 minute'
     or v_end>v_final_now+(v_snapshot->>'maximumAdvanceDays')::integer*interval '1 day'
