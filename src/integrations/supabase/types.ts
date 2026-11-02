@@ -393,6 +393,15 @@ export type Database = {
         Args: { p_context: Json; p_mandate_id: string }
         Returns: Json
       }
+      project_s_prepare_delegated_booking_v2: {
+        Args: {
+          p_context: Json
+          p_preparation_id: string
+          p_request: Json
+          p_step_up_id: string
+        }
+        Returns: Json
+      }
       project_s_register_actor_v2: {
         Args: {
           p_actor_id: string

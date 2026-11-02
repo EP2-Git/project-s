@@ -49,8 +49,10 @@ an internal RPC adapter, not a public serializer, booking lookup or actor receip
 Credential/profile expiry and revocation are enforced on reads even without a
 cleanup worker. Inspection does not revalidate the current host/type snapshot
 or establish admission; the future booking kernel must do that. This slice
-cannot spend a use: booking commit, step-up and receipt
-semantics remain unimplemented.
+cannot spend a use. The separate
+[private preparation slice](private-delegated-preparations.md) adds actor intent
+validation and pending step-up requests; booking commit, exact step-up approval
+and receipts remain unimplemented.
 
 Revocation compares the original revision, records a minimal ordered audit
 event and acknowledges only after commit. An exact revoke retry returns the

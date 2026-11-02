@@ -53,6 +53,9 @@ local data while evaluating it.
 - [Private mandate controls](private-mandate-controls.md) — exact principal-only
   review/approval/revocation and profile-dependent invalidation; no delegated
   booking or public controls are enabled.
+- [Private delegated preparation](private-delegated-preparations.md) — current
+  actor/policy/scheduling validation and bounded pending step-up requests; no
+  delegated commit or approval UI is enabled.
 - [TypeScript SDK](../packages/sdk/README.md) — source-workspace client usage.
 - [Local stdio MCP](mcp-local-stdio.md) and
   [tool manifest](mcp-tool-manifest.md) — the client-launched MCP adapter.

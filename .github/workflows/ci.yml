@@ -120,7 +120,7 @@ jobs:
         run: npm run bootstrap -- --skip-install
       - name: Prove existing data refusal and reuse preservation
         run: node scripts/check-local-bootstrap.mjs
-      - name: Prove real Auth-to-RPC profile and mandate controls on the verified bootstrap
+      - name: Prove real Auth-to-RPC authority controls and delegated preparation
         run: npm run test:authority:live
         env:
           PROJECT_S_DISPOSABLE_AUTHORITY_TEST: '1'

@@ -64,6 +64,12 @@ invalidation. Additional pgTAP/dblink fixtures test live state, stale reviews,
 expiry after actual waits and transactional audit failure. Shared Node/Deno
 adapter vectors do not substitute for those live database tests.
 
+The [private delegated preparation](private-delegated-preparations.md) proof
+adds genuine actor authentication, current schedule/scope checks, no-hold and
+budget preservation, bounded step-up references, exact deduplication, caps and
+profile-dependent invalidation. Independent sessions verify fresh checks after
+actual waits. Delegated commit, step-up approval and receipts remain unproven.
+
 ### Authenticated owner isolation
 
 The fresh-host booking scenario signs up two independent synthetic accounts

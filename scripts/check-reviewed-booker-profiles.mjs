@@ -19,6 +19,18 @@ const refusal = async (operation, code, status) => {
   check(result?.code === code && result?.status === status);
   return result;
 };
+const waitForPermission = async (notBefore) => {
+  // Exercise the real admission clock, never rewrite a reviewed policy or
+  // inject a fake database time. This fixture wait has a ten-second ceiling.
+  const started = performance.now();
+  const target = Date.parse(notBefore);
+  check(Number.isFinite(target) && target <= Date.now() + 10_000);
+  while (Date.now() < target) {
+    check(performance.now() - started < 10_000);
+    await new Promise((resolve) => setTimeout(resolve, Math.min(25, target - Date.now())));
+  }
+  check(performance.now() - started < 10_000);
+};
 
 async function main() {
   check(process.env.PROJECT_S_DISPOSABLE_AUTHORITY_TEST === '1');
@@ -65,7 +77,7 @@ async function main() {
   const server = client(values.SERVICE_ROLE_KEY);
   const rpc = (name, args) => server.rpc(name, args);
   const {
-    authenticatePrincipal, authenticateActor, createActorCredential, registerActorCredential,
+    authenticatePrincipal, authenticateActor, createActorCredential, registerActorCredential, revokeActorCredential,
   } = await import('../supabase/functions/_shared/actorCredentials.ts');
   const {
     createReviewedBookerProfile, deleteReviewedBookerProfile,
@@ -73,6 +85,7 @@ async function main() {
   const {
     createMandateReview, approveMandate, getMandate, revokeMandate,
   } = await import('../supabase/functions/_shared/mandateControls.ts');
+  const { prepareDelegatedBooking } = await import('../supabase/functions/_shared/delegatedPreparations.ts');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
   const users = [];
   const clients = [];
@@ -83,6 +96,8 @@ async function main() {
   const record = () => { passed += 1; };
   const reauthenticate = (user) => authenticatePrincipal({ authorization: user.authorization,
     requestId: `profile-proof-${randomUUID()}`, transport: 'http', binding, auth: user.browser.auth });
+  const reauthenticateActor = (registered) => authenticateActor({ authorization: `Bearer ${registered.credential}`,
+    requestId: `preparation-proof-${randomUUID()}`, transport: 'http', binding, rpc });
   const signup = async () => {
     const browser = client(values.ANON_KEY);
     clients.push(browser);
@@ -101,6 +116,12 @@ async function main() {
     return { browser, authorization, context };
   };
   try {
+    stage = 'required private preparation schema';
+    // An owned but unmigrated stack must be refused before creating fixtures:
+    // cleanup cannot safely reference tables that do not exist yet.
+    check(sql(`select (to_regclass('private.v2_delegated_preparations') is not null
+      and to_regclass('private.v2_step_up_requests') is not null
+      and to_regprocedure('public.project_s_prepare_delegated_booking_v2(jsonb,uuid,uuid,jsonb)') is not null)::text;`) === 'true');
     stage = 'empty synthetic instance configuration';
     sql(`begin; lock table private.v2_authority_instance in exclusive mode;
       do $$begin if exists(select 1 from private.v2_authority_instance) then
@@ -315,6 +336,130 @@ async function main() {
       and policy_summary ->> 'email'='booker@example.invalid';`) === '1');
     record();
 
+    stage = 'real saved host schedule exposes two future free slots';
+    const monday = new Date();
+    monday.setUTCHours(12, 0, 0, 0);
+    monday.setUTCDate(monday.getUTCDate() + ((1 - monday.getUTCDay() + 7) % 7 || 7));
+    const dateKey = monday.toISOString().slice(0, 10);
+    const slots = JSON.parse(sql(`select coalesce(jsonb_agg(jsonb_build_object(
+      'startAt',private.v2_mandate_instant(slot_start),'endAt',private.v2_mandate_instant(slot_end))
+      order by slot_start),'[]'::jsonb) from (select slot_start,slot_end from private.compute_free_slots_v1(
+        ${literal(host.data.username)},${literal(meeting.data.id)},${literal(dateKey)}::date,'UTC',clock_timestamp())
+        order by slot_start limit 2) as free_slots;`));
+    check(slots.length === 2 && Date.parse(slots[0].startAt) > Date.now() &&
+      Date.parse(slots[0].endAt) - Date.parse(slots[0].startAt) === 30 * 60_000 &&
+      Date.parse(slots[1].endAt) > Date.parse(slots[0].endAt));
+    record();
+
+    stage = 'exact reviewed permission becomes active on the real clock';
+    const preparationClock = Date.now();
+    const preparationPolicy = {
+      ...policy, meetingWindowStart: slots[0].startAt, meetingWindowEnd: slots[0].endAt,
+      notBefore: new Date(preparationClock + 6_000).toISOString().replace('Z', '000Z'),
+      expiresAt: new Date(preparationClock + 60 * 60_000).toISOString().replace('Z', '000Z'),
+    };
+    const preparationReview = await createMandateReview({ context: await reauthenticate(a),
+      input: preparationPolicy, binding, rpc });
+    const preparationMandate = await approveMandate({ context: await reauthenticate(a),
+      reviewId: preparationReview.reviewId,
+      input: { expectedRevision: preparationReview.revision, summaryDigest: preparationReview.summaryDigest }, binding, rpc });
+    check(Date.parse(preparationMandate.issuedAt) <= Date.parse(preparationPolicy.notBefore));
+    await waitForPermission(preparationPolicy.notBefore);
+    record();
+
+    const preparationInput = {
+      mandateId: preparationMandate.mandateId, username: host.data.username,
+      meetingTypeId: meeting.data.id, startAt: slots[0].startAt,
+    };
+    stage = 'real actor preparation derives exact private-safe no-hold metadata';
+    const preparationStarted = Date.now();
+    const prepared = await prepareDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: preparationInput, binding, rpc });
+    check(prepared.kind === 'prepared' && uuid(prepared.data.preparationId) && prepared.data.notHeld === true);
+    check(Object.keys(prepared.data).sort().join(',') === 'expiresAt,notHeld,preparationId,summary,summaryDigest');
+    check(Object.keys(prepared.data.summary).sort().join(',') ===
+      'endAt,guestTimeZone,hostDisplayName,hostTimeZone,meetingTypeId,meetingTypeTitle,startAt,username');
+    check(prepared.data.summary.username === host.data.username && prepared.data.summary.meetingTypeId === meeting.data.id &&
+      prepared.data.summary.hostDisplayName === host.data.full_name && prepared.data.summary.meetingTypeTitle === 'Synthetic authority meeting' &&
+      prepared.data.summary.startAt === slots[0].startAt && prepared.data.summary.endAt === slots[0].endAt &&
+      prepared.data.summary.hostTimeZone === 'UTC' && prepared.data.summary.guestTimeZone === profile.guestTimeZone);
+    check(/^[a-f0-9]{64}$/.test(prepared.data.summaryDigest) && Date.parse(prepared.data.expiresAt) > preparationStarted &&
+      Date.parse(prepared.data.expiresAt) <= Date.now() + 10 * 60_000 &&
+      Date.parse(prepared.data.expiresAt) <= Date.parse(preparationMandate.expiresAt));
+    check(!JSON.stringify(prepared).includes('booker@example.invalid') && !JSON.stringify(prepared).includes('Synthetic Booker') &&
+      !JSON.stringify(prepared).includes(registered.credential));
+    record();
+
+    stage = 'same authenticated intent reconciles original preparation without extending time';
+    const preparedRetry = await prepareDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: preparationInput, binding, rpc });
+    check(JSON.stringify(preparedRetry) === JSON.stringify(prepared));
+    check(sql(`select count(*) from private.v2_delegated_preparations where instance_id=${literal(binding.instanceId)}
+      and epoch=1 and principal_id=${literal(a.context.principalId)} and actor_id=${literal(registered.actorId)};`) === '1');
+    record();
+
+    stage = 'valid public slot outside the mandate creates only a bounded step-up reference';
+    const outsideInput = { ...preparationInput, startAt: slots[1].startAt };
+    const stepStarted = Date.now();
+    const stepped = await prepareDelegatedBooking({ context: await reauthenticateActor(registered), input: outsideInput, binding, rpc });
+    check(stepped.kind === 'step_up_required' && uuid(stepped.stepUp.reviewId));
+    check(Object.keys(stepped.stepUp).sort().join(',') === 'expiresAt,reviewId,reviewUrl' &&
+      stepped.stepUp.reviewUrl === `${binding.audience}/authority/review#review=${stepped.stepUp.reviewId}`);
+    check(Date.parse(stepped.stepUp.expiresAt) > stepStarted && Date.parse(stepped.stepUp.expiresAt) <= Date.now() + 5 * 60_000 &&
+      Date.parse(stepped.stepUp.expiresAt) <= Date.parse(preparationMandate.expiresAt));
+    const steppedRetry = await prepareDelegatedBooking({ context: await reauthenticateActor(registered), input: outsideInput, binding, rpc });
+    check(JSON.stringify(steppedRetry) === JSON.stringify(stepped));
+    check(!JSON.stringify(stepped).includes('booker@example.invalid') && !JSON.stringify(stepped).includes('Synthetic Booker'));
+    record();
+
+    stage = 'principal context and extra actor-selected profile fields cannot prepare';
+    calls = 0;
+    await refusal(() => prepareDelegatedBooking({ context: a.context, input: preparationInput, binding, rpc: observedRpc }),
+      'AUTHENTICATION_REQUIRED', 401);
+    await refusal(async () => prepareDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: { ...preparationInput, booker: { name: 'Synthetic Override', email: 'override@example.invalid' } },
+      binding, rpc: observedRpc }), 'VALIDATION_ERROR', 400);
+    check(calls === 0);
+    record();
+
+    stage = 'real other-principal actor and mismatched credential binding cannot prepare';
+    const otherActor = await registerActorCredential({ context: await reauthenticate(b), label: 'Synthetic other-principal actor',
+      expiresAt: new Date(Date.now() + 60 * 60_000).toISOString().replace('Z', '000Z'), binding, rpc });
+    const otherActorContext = await reauthenticateActor(otherActor);
+    const foreignPreparation = await refusal(() => prepareDelegatedBooking({ context: otherActorContext,
+      input: preparationInput, binding, rpc }), 'FORBIDDEN', 403);
+    const missingPreparation = await refusal(() => prepareDelegatedBooking({ context: otherActorContext,
+      input: { ...preparationInput, mandateId: randomUUID() }, binding, rpc }), 'FORBIDDEN', 403);
+    check(JSON.stringify(foreignPreparation) === JSON.stringify(missingPreparation));
+    await refusal(async () => prepareDelegatedBooking({ context: { ...await reauthenticateActor(registered), actorId: randomUUID() },
+      input: preparationInput, binding, rpc }), 'AUTHENTICATION_REQUIRED', 401);
+    record();
+
+    stage = 'real anonymous and authenticated clients cannot invoke delegated preparation RPC';
+    for (const caller of untrusted) {
+      const denied = await caller.rpc('project_s_prepare_delegated_booking_v2', {
+        p_context: await reauthenticateActor(registered), p_preparation_id: randomUUID(), p_step_up_id: randomUUID(),
+        p_request: preparationInput,
+      });
+      check(denied.error?.code === '42501');
+    }
+    record();
+
+    stage = 'preparation and escalation reserve no slot and spend no booking budget';
+    const unused = await getMandate({ context: await reauthenticate(a), mandateId: preparationMandate.mandateId, binding, rpc });
+    check(unused.state === 'active' && unused.remainingUses === 1);
+    check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
+    check(sql(`select count(*) from private.compute_free_slots_v1(${literal(host.data.username)},
+      ${literal(meeting.data.id)},${literal(dateKey)}::date,'UTC',clock_timestamp())
+      where slot_start=${literal(slots[0].startAt)}::timestamptz;`) === '1');
+    check(sql(`select count(*) from private.v2_step_up_requests where instance_id=${literal(binding.instanceId)}
+      and epoch=1 and principal_id=${literal(a.context.principalId)} and actor_id=${literal(registered.actorId)};`) === '1');
+    check(sql(`select count(*) from (
+      select to_jsonb(p) as payload from private.v2_delegated_preparations p where instance_id=${literal(binding.instanceId)} and epoch=1
+      union all select to_jsonb(s) from private.v2_step_up_requests s where instance_id=${literal(binding.instanceId)} and epoch=1
+      ) as owned where payload::text like '%booker@example.invalid%' or payload::text like '%Synthetic Booker%';`) === '0');
+    record();
+
     stage = 'own deletion and exact retry remove PII without a second event';
     const deleted = await deleteReviewedBookerProfile({ context: await reauthenticate(a),
       profileId: created.profileId, input: { expectedRevision: 1 }, binding, rpc });
@@ -346,6 +491,33 @@ async function main() {
     await refusal(() => createMandateReview({ context: a.context, input: policy, binding, rpc }), 'VERSION_CONFLICT', 409);
     record();
 
+    stage = 'profile deletion atomically invalidates pending preparation and step-up rows';
+    for (const [table, idColumn, id] of [
+      ['v2_delegated_preparations', 'preparation_id', prepared.data.preparationId],
+      ['v2_step_up_requests', 'review_id', stepped.stepUp.reviewId],
+    ]) {
+      // Table/column identifiers come only from this fixed allowlist, never a response.
+      check(sql(`select count(*) from private.${table} r join private.v2_booker_profiles p
+        on (p.instance_id,p.epoch,p.principal_id,p.profile_id)=(r.instance_id,r.epoch,r.principal_id,r.profile_id)
+        where r.${idColumn}=${literal(id)} and r.instance_id=${literal(binding.instanceId)} and r.epoch=1
+        and r.principal_id=${literal(a.context.principalId)} and r.state='invalidated'
+        and r.summary is null
+        and r.invalidated_at=p.deleted_at and r.invalidated_sequence=p.deleted_sequence;`) === '1');
+    }
+    await refusal(async () => prepareDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: preparationInput, binding, rpc }), 'FORBIDDEN', 403);
+    record();
+
+    stage = 'credential revocation denies both fresh verification and a previously verified actor context';
+    const cachedActorContext = await reauthenticateActor(registered);
+    const actorRevoked = await revokeActorCredential({ context: await reauthenticate(a), actorId: registered.actorId,
+      expectedRevision: 1, binding, rpc });
+    check(actorRevoked.state === 'revoked' && actorRevoked.revision === 2);
+    await refusal(() => reauthenticateActor(registered), 'AUTHENTICATION_REQUIRED', 401);
+    await refusal(() => prepareDelegatedBooking({ context: cachedActorContext, input: preparationInput, binding, rpc }),
+      'AUTHENTICATION_REQUIRED', 401);
+    record();
+
     stage = 'live account deletion invalidates an already verified context';
     sql(`delete from auth.users where id=${literal(b.context.principalId)};`);
     await refusal(() => createReviewedBookerProfile({ context: b.context, input: profile, binding, rpc }),
@@ -361,8 +533,8 @@ async function main() {
     const auditCounts = JSON.parse(sql(`select jsonb_object_agg(action,n) from
       (select action,count(*) as n from private.v2_authority_events
         where instance_id=${literal(binding.instanceId)} and epoch=1 group by action) as counts;`));
-    const expectedAuditCounts = { actor_registered: 1, profile_reviewed: 2, profile_deleted: 1,
-      mandate_reviewed: 3, mandate_approved: 2, mandate_revoked: 1 };
+    const expectedAuditCounts = { actor_registered: 2, actor_revoked: 1, profile_reviewed: 2, profile_deleted: 1,
+      mandate_reviewed: 4, mandate_approved: 3, mandate_revoked: 1, preparation_created: 1, step_up_requested: 1 };
     check(Object.keys(auditCounts).sort().join(',') === Object.keys(expectedAuditCounts).sort().join(','));
     for (const action of Object.keys(expectedAuditCounts)) check(auditCounts[action] === expectedAuditCounts[action]);
     check(sql(`select count(*) from (select sequence,
@@ -380,6 +552,8 @@ async function main() {
         const ids = users.map(literal).join(',');
         const ownerClause = ids ? `principal_id in (${ids})` : 'false';
         sql(`begin;
+          delete from private.v2_delegated_preparations where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
+          delete from private.v2_step_up_requests where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_mandates where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_mandate_reviews where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_booker_profiles where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
@@ -399,11 +573,11 @@ async function main() {
     }
   }
   check(!failed);
-  console.log(`Reviewed profiles and mandate controls: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
+  console.log(`Reviewed profiles, mandate controls and delegated preparations: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
 }
 
 try { await main(); }
 catch {
-  console.error(`Reviewed profile and mandate proof failed at: ${stage}. Diagnostics withheld to protect local credentials and private data.`);
+  console.error(`Private authority proof failed at: ${stage}. Diagnostics withheld to protect local credentials and private data.`);
   process.exitCode = 1;
 }
