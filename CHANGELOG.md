@@ -4,6 +4,11 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+- Add private authenticated-actor booking preparation and bounded pending
+  step-up requests, with current policy/scheduling checks, exact retry
+  reconciliation, privacy-minimal output, rate bounds and atomic profile-delete
+  invalidation. No delegated commit, approval UI or public route is enabled.
+
 - Add private principal-only mandate review, exact approval, inspection and
   revocation, with atomic reviewed-profile dependent invalidation and minimal
   audit. No instance, public control, delegated booking or monitoring access is

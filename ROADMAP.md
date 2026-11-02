@@ -68,6 +68,12 @@ principal-only review, approval and revocation with profile-dependent
 invalidation. Delegated booking, expiry cleanup and public controls remain
 required before the separate synthetic enablement review.
 
+The [private delegated preparation](docs/private-delegated-preparations.md)
+slice validates current actor permission and scheduling for an exact intent,
+with bounded pending step-up requests outside scope. Atomic delegated commit,
+exact step-up approval, receipts, cleanup/recovery and real controls remain
+required; no delegated route is enabled.
+
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 
 **Goal:** independently authorized guest-side and host-side agents coordinate one
