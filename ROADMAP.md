@@ -70,7 +70,8 @@ required before the separate synthetic enablement review.
 
 The [private delegated preparation](docs/private-delegated-preparations.md)
 slice validates current actor permission and scheduling for an exact intent,
-with bounded pending step-up requests outside scope. Atomic delegated commit,
+with bounded pending step-up requests outside scope and private issuer-only
+inspection of a recorded request. Atomic delegated commit,
 exact step-up approval, receipts, cleanup/recovery and real controls remain
 required; no delegated route is enabled.
 

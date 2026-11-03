@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import {
-  v2InstantNode, v2InstantToEpochMicroseconds, v2MandateApproveInputSchema,
+  v2BookerProfileCreateInputNode, v2DigestNode, v2InstantNode, v2InstantToEpochMicroseconds, v2MandateApproveInputSchema,
   v2MandateApprovedDataSchema, v2MandateReviewDataSchema, v2MandateReviewInputSchema,
   v2MandateRevokeInputSchema, v2MandateRevokedDataSchema, v2PrincipalContextSchema,
-  v2RevisionNode, v2UuidNode,
+  v2PreparedBookingSummarySchema, v2RevisionNode, v2UuidNode,
 } from './.generated/contracts/dist/v2/index.js';
 import { ActorCredentialError, type AuthorityBinding, type AuthorityRpc } from './actorCredentials.ts';
 
@@ -104,6 +104,51 @@ export const getMandate = async ({ context, mandateId, binding, rpc }: Principal
   const raw = await invoke(rpc, 'project_s_get_mandate_v2', { p_context: principal, p_mandate_id: mandate.data });
   const result = mandateStateSchema.safeParse(raw);
   if (!result.success || result.data.mandateId !== mandate.data) throw internal();
+  return result.data;
+};
+
+const stepUpDifferenceSchema = z.object({
+  field: z.enum(['host', 'meeting_type', 'meeting_window', 'duration']),
+  proposed: z.string().min(1),
+  reviewed: z.string().min(1),
+}).strict();
+const stepUpBookerSchema = z.strictObject({
+  name: v2BookerProfileCreateInputNode.shape.name,
+  email: v2BookerProfileCreateInputNode.shape.email,
+});
+const stepUpExactSummarySchema = z.unknown().transform((value, ctx) => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    ctx.addIssue({ code: 'custom', message: 'Invalid step-up booking snapshot.' });
+    return z.NEVER;
+  }
+  const { name, email, ...snapshot } = value as Record<string, unknown>;
+  const summary = v2PreparedBookingSummarySchema.safeParse(snapshot);
+  const booker = stepUpBookerSchema.safeParse({ name, email });
+  if (!summary.success || !booker.success) {
+    ctx.addIssue({ code: 'custom', message: 'Invalid step-up booking snapshot.' });
+    return z.NEVER;
+  }
+  return { ...summary.data, ...booker.data };
+});
+const stepUpReviewSchema = z.object({
+  reviewId: v2UuidNode.zod,
+  revision: z.literal(1),
+  state: z.literal('pending'),
+  summaryDigest: v2DigestNode.zod,
+  expiresAt: v2InstantNode.zod,
+  exactSummary: stepUpExactSummarySchema,
+  differences: z.array(stepUpDifferenceSchema).min(1).max(4),
+}).strict();
+
+// The stored snapshot is for issuer review. Approval must revalidate current
+// scheduling separately. Keep the private profile fields out of actor results.
+export const getStepUpReview = async ({ context, reviewId, binding, rpc }: PrincipalControl & { reviewId: string }) => {
+  const principal = principalFor(context, binding);
+  const review = v2UuidNode.zod.safeParse(reviewId);
+  if (!review.success) throw invalid();
+  const raw = await invoke(rpc, 'project_s_get_step_up_review_v2', { p_context: principal, p_review_id: review.data });
+  const result = stepUpReviewSchema.safeParse(raw);
+  if (!result.success || result.data.reviewId !== review.data) throw internal();
   return result.data;
 };
 

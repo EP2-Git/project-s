@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createMandateReview, approveMandate, getMandate, revokeMandate } from '../../supabase/functions/_shared/mandateControls.ts';
+import { createMandateReview, approveMandate, getMandate, getStepUpReview, revokeMandate } from '../../supabase/functions/_shared/mandateControls.ts';
 
 // Identical bounded Node/Deno vectors. Doubles prove the adapter boundary only;
 // pgTAP/dblink and the disposable Auth/RPC proof establish database behavior.
@@ -38,8 +38,49 @@ const operations = (rpc, overrides = {}) => [
   () => createMandateReview({ ...base, input, ...overrides, rpc }),
   () => approveMandate({ ...base, ...approval, ...overrides, rpc }),
   () => getMandate({ ...base, mandateId, ...overrides, rpc }),
+  () => getStepUpReview({ ...base, reviewId, ...overrides, rpc }),
   () => revokeMandate({ ...base, ...revocation, ...overrides, rpc }),
 ];
+
+const stepUp = {
+  reviewId, revision: 1, state: 'pending', summaryDigest: digest,
+  expiresAt: '2030-01-01T12:05:00.000001Z',
+  exactSummary: {
+    username: input.username, hostDisplayName: summary.hostDisplayName, meetingTypeId: input.meetingTypeId,
+    meetingTypeTitle: summary.meetingTypeTitle, startAt: input.meetingWindowStart, endAt: input.meetingWindowEnd,
+    hostTimeZone: 'UTC', guestTimeZone: '+01:00', name: summary.name, email: summary.email,
+  },
+  differences: [{ field: 'meeting_window', reviewed: 'Original window', proposed: 'Requested window' }],
+};
+
+test('step-up review: exact issuer RPC preserves the snapshot and profile fields', async () => {
+  const result = await getStepUpReview({ ...base, reviewId: reviewId.toUpperCase(), rpc: async (name, args) => {
+    assert.equal(name, 'project_s_get_step_up_review_v2');
+    assert.deepEqual(args, { p_context: context, p_review_id: reviewId });
+    return { data: stepUp, error: null };
+  } });
+  assert.deepEqual(result, stepUp);
+  await assert.rejects(getStepUpReview({ ...base, reviewId: 'unknown', rpc: async () => {
+    assert.fail('Malformed reference reached SQL');
+  } }), failure('VALIDATION_ERROR', 400));
+});
+
+test('step-up review: mismatched or unsafe SQL output fails closed', async () => {
+  for (const data of [
+    { ...stepUp, reviewId: mandateId },
+    { ...stepUp, state: 'approved' },
+    { ...stepUp, summaryDigest: 'not a digest' },
+    { ...stepUp, exactSummary: { ...stepUp.exactSummary, endAt: stepUp.exactSummary.startAt } },
+    { ...stepUp, exactSummary: { ...stepUp.exactSummary, principalId } },
+    { ...stepUp, exactSummary: { ...stepUp.exactSummary, ...JSON.parse('{"__proto__":{"private":true}}') } },
+    { ...stepUp, differences: [{ ...stepUp.differences[0], field: 'credential' }] },
+    { ...stepUp, differences: [{ ...stepUp.differences[0], secret: diagnostic }] },
+    { ...stepUp, differences: [] },
+  ]) {
+    await assert.rejects(getStepUpReview({ ...base, reviewId, rpc: async () => ({ data, error: null }) }),
+      failure('INTERNAL_ERROR', 500));
+  }
+});
 
 test('mandates: review sends only normalized policy and retains exact microseconds', async () => {
   let calls = 0;
@@ -163,12 +204,12 @@ for (const [sql, code, status] of [
   ...['PT503', '55P03', '57014', '40P01', '40001'].map((value) => [value, 'AUTHORITY_BUSY', 503]),
   ['XX000', 'INTERNAL_ERROR', 500],
 ]) {
-  test(`mandates: ${sql} redacts all four control errors without retry or fallback`, async () => {
+  test(`mandates: ${sql} redacts control errors without retry or fallback`, async () => {
     let calls = 0;
     for (const operation of operations(async () => { calls++; return { data: null, error: { code: sql, message: diagnostic } }; })) {
       await assert.rejects(operation(), failure(code, status));
     }
-    assert.equal(calls, 4);
+    assert.equal(calls, 5);
   });
 }
 
