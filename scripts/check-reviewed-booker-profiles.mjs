@@ -83,7 +83,7 @@ async function main() {
     createReviewedBookerProfile, deleteReviewedBookerProfile,
   } = await import('../supabase/functions/_shared/reviewedBookerProfiles.ts');
   const {
-    createMandateReview, approveMandate, getMandate, revokeMandate,
+    createMandateReview, approveMandate, getMandate, revokeMandate, getStepUpReview,
   } = await import('../supabase/functions/_shared/mandateControls.ts');
   const { prepareDelegatedBooking } = await import('../supabase/functions/_shared/delegatedPreparations.ts');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
@@ -116,12 +116,13 @@ async function main() {
     return { browser, authorization, context };
   };
   try {
-    stage = 'required private preparation schema';
+    stage = 'required private preparation and step-up review schema';
     // An owned but unmigrated stack must be refused before creating fixtures:
     // cleanup cannot safely reference tables that do not exist yet.
     check(sql(`select (to_regclass('private.v2_delegated_preparations') is not null
       and to_regclass('private.v2_step_up_requests') is not null
-      and to_regprocedure('public.project_s_prepare_delegated_booking_v2(jsonb,uuid,uuid,jsonb)') is not null)::text;`) === 'true');
+      and to_regprocedure('public.project_s_prepare_delegated_booking_v2(jsonb,uuid,uuid,jsonb)') is not null
+      and to_regprocedure('public.project_s_get_step_up_review_v2(jsonb,uuid)') is not null)::text;`) === 'true');
     stage = 'empty synthetic instance configuration';
     sql(`begin; lock table private.v2_authority_instance in exclusive mode;
       do $$begin if exists(select 1 from private.v2_authority_instance) then
@@ -412,6 +413,53 @@ async function main() {
     check(!JSON.stringify(stepped).includes('booker@example.invalid') && !JSON.stringify(stepped).includes('Synthetic Booker'));
     record();
 
+    const { reviewId } = stepped.stepUp;
+    stage = 'own exact pending step-up review uses the reviewed profile and slot';
+    const exactReview = await getStepUpReview({ context: await reauthenticate(a), reviewId, binding, rpc });
+    check(Object.keys(exactReview).sort().join(',') === 'differences,exactSummary,expiresAt,reviewId,revision,state,summaryDigest' &&
+      exactReview.reviewId === reviewId && exactReview.revision === 1 && exactReview.state === 'pending' &&
+      exactReview.expiresAt === stepped.stepUp.expiresAt && /^[a-f0-9]{64}$/.test(exactReview.summaryDigest));
+    const { exactSummary, differences } = exactReview;
+    check(Object.keys(exactSummary).sort().join(',') ===
+      'email,endAt,guestTimeZone,hostDisplayName,hostTimeZone,meetingTypeId,meetingTypeTitle,name,startAt,username');
+    check(exactSummary.username === host.data.username && exactSummary.meetingTypeId === meeting.data.id &&
+      exactSummary.hostDisplayName === host.data.full_name && exactSummary.meetingTypeTitle === 'Synthetic authority meeting' &&
+      exactSummary.startAt === slots[1].startAt && exactSummary.endAt === slots[1].endAt &&
+      exactSummary.hostTimeZone === 'UTC' && exactSummary.guestTimeZone === profile.guestTimeZone &&
+      exactSummary.name === 'Synthetic Booker' && exactSummary.email === 'booker@example.invalid');
+    check(differences.length === 1 && Object.keys(differences[0]).sort().join(',') === 'field,proposed,reviewed' &&
+      differences[0].field === 'meeting_window' &&
+      differences[0].proposed === `${slots[1].startAt} / ${slots[1].endAt}` &&
+      differences[0].reviewed === `${slots[0].startAt} / ${slots[0].endAt}`);
+    const exactReviewRetry = await getStepUpReview({ context: await reauthenticate(a), reviewId, binding, rpc });
+    check(JSON.stringify(exactReviewRetry) === JSON.stringify(exactReview));
+    record();
+
+    stage = 'authenticated actor cannot read its principal exact review';
+    calls = 0;
+    await refusal(async () => getStepUpReview({ context: await reauthenticateActor(registered),
+      reviewId, binding, rpc: observedRpc }), 'AUTHENTICATION_REQUIRED', 401);
+    check(calls === 0);
+    record();
+
+    stage = 'real other principal and missing step-up review share one refusal';
+    const otherPrincipal = await reauthenticate(b);
+    const foreignStepUp = await refusal(() => getStepUpReview({ context: otherPrincipal, reviewId, binding, rpc }),
+      'FORBIDDEN', 403);
+    const missingStepUp = await refusal(() => getStepUpReview({ context: otherPrincipal, reviewId: randomUUID(), binding, rpc }),
+      'FORBIDDEN', 403);
+    check(JSON.stringify(foreignStepUp) === JSON.stringify(missingStepUp));
+    record();
+
+    stage = 'real anonymous and authenticated clients cannot invoke the exact review RPC';
+    for (const caller of untrusted) {
+      const denied = await caller.rpc('project_s_get_step_up_review_v2', {
+        p_context: await reauthenticate(a), p_review_id: reviewId,
+      });
+      check(denied.error?.code === '42501' && denied.data === null);
+    }
+    record();
+
     stage = 'principal context and extra actor-selected profile fields cannot prepare';
     calls = 0;
     await refusal(() => prepareDelegatedBooking({ context: a.context, input: preparationInput, binding, rpc: observedRpc }),
@@ -508,6 +556,11 @@ async function main() {
       input: preparationInput, binding, rpc }), 'FORBIDDEN', 403);
     record();
 
+    stage = 'owner cannot read the exact step-up review after profile deletion';
+    await refusal(async () => getStepUpReview({ context: await reauthenticate(a), reviewId, binding, rpc }),
+      'VERSION_CONFLICT', 409);
+    record();
+
     stage = 'credential revocation denies both fresh verification and a previously verified actor context';
     const cachedActorContext = await reauthenticateActor(registered);
     const actorRevoked = await revokeActorCredential({ context: await reauthenticate(a), actorId: registered.actorId,
@@ -573,7 +626,7 @@ async function main() {
     }
   }
   check(!failed);
-  console.log(`Reviewed profiles, mandate controls and delegated preparations: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
+  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up reviews: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
 }
 
 try { await main(); }

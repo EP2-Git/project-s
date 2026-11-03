@@ -42,9 +42,9 @@ booking use.
 An otherwise eligible request outside host/type/window/duration scope records a
 real private pending review. The actor receives only its opaque ID, deadline
 and configured same-origin review URL. It lasts at most five minutes and cannot
-outlive the original permission, credential or profile. Immutable profile
-references allow a future principal-only review without copying reviewed name
-or email. The actor-visible summary includes the permitted guest timezone.
+outlive the original permission, credential or profile. The pending row keeps
+immutable profile references without copying the reviewed name or email. The
+actor-visible summary includes the permitted guest timezone.
 The reference grants no access or approval; issuer UI and exact replacement
 grant approval remain gated.
 
@@ -63,6 +63,22 @@ mandate revocation/expiry denies subsequent preparation retries. Record creation
 and minimal sequenced audit commit together; audit failure rolls everything
 back. Expiry does not rely on purge; retention cleanup/recovery remain required.
 
+## Issuer review of a recorded request
+
+The private `getStepUpReview` adapter requires a freshly verified issuer
+context. Under the principal fence, its service-only RPC checks ownership,
+pending state, and the original mandate, credential and profile binding against
+live state and time after waits. Foreign and missing references both return
+`FORBIDDEN`. An unavailable owned review returns `VERSION_CONFLICT` without its
+summary. The issuer sees the recorded meeting and differences, original digest
+and expiry, and the name and email from the live reviewed profile. The actor
+still receives only the opaque review reference.
+
+This read neither changes authority nor writes an event. Its snapshot is the
+request the actor made. Exact approval must revalidate current scheduling and
+replace the unused permission atomically. A recorded `host` difference can
+represent a change of account even when the public username is the same.
+
 ## Time-zone compatibility
 
 Availability search uses the requested instant's UTC date and UTC display zone
@@ -79,13 +95,17 @@ results, same-origin references, redacted errors and no fallback. Disposable
 pgTAP/dblink tests cover real scheduling, scope, expiry during waits, revocation,
 deletion/epoch ordering, caps and audit rollback. The guarded
 `test:authority:live` proof adds genuine actor Auth-to-RPC preparation/step-up,
-deduplication and deletion checks. Distinguish local, hosted and mock evidence.
+deduplication, issuer-only review and deletion checks. Distinguish local,
+hosted and mock evidence.
 
 The additive migration adds separate default-deny private tables, narrow
 service RPC/helpers and a forward profile-delete replacement. It inserts no
 configuration or legacy FK/cascade, and changes no v1 artifacts, public four-tool
 discovery, browser confirmation, booking rows or cancellation. Generated public
 RPC types must match the migrated stack.
+The issuer-review migration adds a single function and service-only execute
+permission. It changes no stored records and can be removed after its internal
+callers have been disabled.
 
 Atomic one-use commit, exact step-up approval, receipts/replay, full mixed races,
 retention/recovery, transports and working authorized issuer/monitoring UI remain.
