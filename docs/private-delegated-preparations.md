@@ -4,9 +4,9 @@ This internal [#17](https://github.com/EP2-Git/project-s/issues/17) slice extend
 the [private mandate controls](private-mandate-controls.md) under accepted
 [ADR 0004](adr/0004-bounded-mandate-implementation.md). A freshly verified actor
 can prepare an exact in-scope meeting or create a bounded pending step-up request
-outside its current permission. It enables no instance, public route, issuer UI,
-SDK/MCP operation, approval grant or delegated booking commit. The existing app
-and labelled Authority Lab retain their established behavior.
+outside its current permission. The verified issuer can privately inspect,
+approve or revoke that request. Public transport, the issuer interface and
+delegated booking commit require further implementation and enablement review.
 
 ## Live caller, policy and scheduling checks
 
@@ -45,8 +45,8 @@ and configured same-origin review URL. It lasts at most five minutes and cannot
 outlive the original permission, credential or profile. The pending row keeps
 immutable profile references without copying the reviewed name or email. The
 actor-visible summary includes the permitted guest timezone.
-The reference grants no access or approval; issuer UI and exact replacement
-grant approval remain gated.
+The reference requires principal authentication for review. The issuer interface
+and its transport protections remain part of the enablement work.
 
 Exact eligible retries reconcile the original pending ID/expiry without another
 event or deadline extension. One actor may have at most 20 live pending
@@ -75,9 +75,35 @@ and expiry, and the name and email from the live reviewed profile. The actor
 still receives only the opaque review reference.
 
 This read neither changes authority nor writes an event. Its snapshot is the
-request the actor made. Exact approval must revalidate current scheduling and
-replace the unused permission atomically. A recorded `host` difference can
+request the actor made. A recorded `host` difference can
 represent a change of account even when the public username is the same.
+
+## Exact approval and linked revocation
+
+The private `approveStepUpReview` control accepts the recorded revision and
+digest from the verified issuer. It revalidates the live account, epoch,
+credential, profile, original permission, exact host snapshot and current slot.
+Stale host or scheduling facts require a fresh request. Under the principal
+fence, approval revokes the original unused permission, invalidates its old
+preparations and other pending exception requests, and creates one exact
+`principal_step_up` grant with a fresh private preparation. The grant expires
+within five minutes of approval, bounded by the original permission, credential
+and profile expiry. This deadline belongs to the approved grant, separate from
+the pending review's approval deadline.
+
+Grant and preparation records use dedicated default-deny private tables. An
+eligible exact retry returns the original preparation ID and deadline. It
+appends no second event and creates no second booking budget. An expired or
+revoked grant cannot be approved again from the old request. Approval holds no
+slot. The future commit must revalidate the exact grant and current scheduling.
+
+The private `revokeStepUpReview` control revokes either a pending request or its
+unused approved grant. Revoking the original mandate also revokes its linked
+replacement, including when approval already marked that mandate revoked.
+Profile deletion invalidates active dependents and clears all linked summary
+copies. Earlier revocation timestamps retain their original meaning. Minimal
+audit, replacement state and invalidation commit atomically. A late supporting
+expiry after a database wait rolls the entire approval back.
 
 ## Time-zone compatibility
 
@@ -95,7 +121,7 @@ results, same-origin references, redacted errors and no fallback. Disposable
 pgTAP/dblink tests cover real scheduling, scope, expiry during waits, revocation,
 deletion/epoch ordering, caps and audit rollback. The guarded
 `test:authority:live` proof adds genuine actor Auth-to-RPC preparation/step-up,
-deduplication, issuer-only review and deletion checks. Distinguish local,
+deduplication, issuer review/approval/revocation and deletion checks. Distinguish local,
 hosted and mock evidence.
 
 The additive migration adds separate default-deny private tables, narrow
@@ -107,7 +133,7 @@ The issuer-review migration adds a single function and service-only execute
 permission. It changes no stored records and can be removed after its internal
 callers have been disabled.
 
-Atomic one-use commit, exact step-up approval, receipts/replay, full mixed races,
+Atomic one-use booking commit, receipts/replay, full mixed races,
 retention/recovery, transports and working authorized issuer/monitoring UI remain.
 Separate explicit synthetic enablement review and bilateral #18 proof are still
 required. Prefer forward repair with routes disabled; preserve pending
