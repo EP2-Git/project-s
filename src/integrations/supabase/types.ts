@@ -365,6 +365,17 @@ export type Database = {
         }
         Returns: Json
       }
+      project_s_approve_step_up_v2: {
+        Args: {
+          p_context: Json
+          p_expected_revision: number
+          p_grant_id: string
+          p_preparation_id: string
+          p_review_id: string
+          p_summary_digest: string
+        }
+        Returns: Json
+      }
       project_s_create_booker_profile_v2: {
         Args: { p_context: Json; p_profile: Json; p_profile_id: string }
         Returns: Json
@@ -430,6 +441,14 @@ export type Database = {
           p_context: Json
           p_expected_revision: number
           p_mandate_id: string
+        }
+        Returns: Json
+      }
+      project_s_revoke_step_up_v2: {
+        Args: {
+          p_context: Json
+          p_expected_revision: number
+          p_review_id: string
         }
         Returns: Json
       }

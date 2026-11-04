@@ -3,7 +3,8 @@ import {
   v2BookerProfileCreateInputNode, v2DigestNode, v2InstantNode, v2InstantToEpochMicroseconds, v2MandateApproveInputSchema,
   v2MandateApprovedDataSchema, v2MandateReviewDataSchema, v2MandateReviewInputSchema,
   v2MandateRevokeInputSchema, v2MandateRevokedDataSchema, v2PrincipalContextSchema,
-  v2PreparedBookingSummarySchema, v2RevisionNode, v2UuidNode,
+  v2PreparedBookingSummarySchema, v2RevisionNode, v2StepUpApproveInputSchema, v2StepUpApprovedDataSchema,
+  v2StepUpRevokeInputSchema, v2StepUpRevokedDataSchema, v2UuidNode,
 } from './.generated/contracts/dist/v2/index.js';
 import { ActorCredentialError, type AuthorityBinding, type AuthorityRpc } from './actorCredentials.ts';
 
@@ -30,7 +31,7 @@ const principalFor = (context: unknown, binding: AuthorityBinding) => {
   } catch { throw denied(); }
   return principal.data;
 };
-const invoke = async (rpc: AuthorityRpc, name: string, args: Record<string, unknown>) => {
+const invoke = async (rpc: AuthorityRpc, name: string, args: Record<string, unknown>, schedulingErrors = false) => {
   let result;
   try { result = await rpc(name, args); } catch { throw internal(); }
   if (!result || result.error) {
@@ -41,7 +42,15 @@ const invoke = async (rpc: AuthorityRpc, name: string, args: Record<string, unkn
     if (code === 'PT400') throw invalid();
     if (code === 'PT401') throw denied();
     if (code === 'PT403') throw failure('FORBIDDEN', 403, 'This operation is not permitted.');
-    if (code === 'PT409') throw failure('VERSION_CONFLICT', 409, 'The authority state has changed.');
+    if (code === 'PT409') {
+      if (schedulingErrors && result?.error?.message === 'SLOT_UNAVAILABLE') {
+        throw failure('SLOT_UNAVAILABLE', 409, 'The selected slot is unavailable.');
+      }
+      if (schedulingErrors && result?.error?.message === 'OUTSIDE_BOOKING_WINDOW') {
+        throw failure('OUTSIDE_BOOKING_WINDOW', 409, "The meeting is outside the host's booking window.");
+      }
+      throw failure('VERSION_CONFLICT', 409, 'The authority state has changed.');
+    }
     throw internal();
   }
   return result.data;
@@ -149,6 +158,41 @@ export const getStepUpReview = async ({ context, reviewId, binding, rpc }: Princ
   const raw = await invoke(rpc, 'project_s_get_step_up_review_v2', { p_context: principal, p_review_id: review.data });
   const result = stepUpReviewSchema.safeParse(raw);
   if (!result.success || result.data.reviewId !== review.data) throw internal();
+  return result.data;
+};
+
+export const approveStepUpReview = async ({ context, reviewId, input, binding, rpc }: PrincipalControl & {
+  reviewId: string; input: unknown;
+}) => {
+  const principal = principalFor(context, binding);
+  const review = v2UuidNode.zod.safeParse(reviewId);
+  const parsed = v2StepUpApproveInputSchema.safeParse(input);
+  if (!review.success || !parsed.success) throw invalid();
+  const raw = await invoke(rpc, 'project_s_approve_step_up_v2', {
+    p_context: principal, p_review_id: review.data,
+    p_preparation_id: crypto.randomUUID(), p_grant_id: crypto.randomUUID(),
+    p_expected_revision: parsed.data.expectedRevision, p_summary_digest: parsed.data.summaryDigest,
+  }, true);
+  const result = v2StepUpApprovedDataSchema.safeParse(raw);
+  // An eligible retry reconciles the original preparation and deadline.
+  if (!result.success || result.data.reviewId !== review.data) throw internal();
+  return result.data;
+};
+
+export const revokeStepUpReview = async ({ context, reviewId, input, binding, rpc }: PrincipalControl & {
+  reviewId: string; input: unknown;
+}) => {
+  const principal = principalFor(context, binding);
+  const review = v2UuidNode.zod.safeParse(reviewId);
+  const parsed = v2StepUpRevokeInputSchema.safeParse(input);
+  if (!review.success || !parsed.success) throw invalid();
+  const raw = await invoke(rpc, 'project_s_revoke_step_up_v2', {
+    p_context: principal, p_review_id: review.data, p_expected_revision: parsed.data.expectedRevision,
+  });
+  const result = v2StepUpRevokedDataSchema.safeParse(raw);
+  if (!result.success || result.data.reviewId !== review.data ||
+      ![2, 3].includes(result.data.revision) ||
+      result.data.revision !== parsed.data.expectedRevision + 1) throw internal();
   return result.data;
 };
 

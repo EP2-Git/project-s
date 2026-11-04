@@ -84,6 +84,7 @@ async function main() {
   } = await import('../supabase/functions/_shared/reviewedBookerProfiles.ts');
   const {
     createMandateReview, approveMandate, getMandate, revokeMandate, getStepUpReview,
+    approveStepUpReview, revokeStepUpReview,
   } = await import('../supabase/functions/_shared/mandateControls.ts');
   const { prepareDelegatedBooking } = await import('../supabase/functions/_shared/delegatedPreparations.ts');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
@@ -116,13 +117,17 @@ async function main() {
     return { browser, authorization, context };
   };
   try {
-    stage = 'required private preparation and step-up review schema';
+    stage = 'required private preparation and step-up approval schema';
     // An owned but unmigrated stack must be refused before creating fixtures:
     // cleanup cannot safely reference tables that do not exist yet.
     check(sql(`select (to_regclass('private.v2_delegated_preparations') is not null
       and to_regclass('private.v2_step_up_requests') is not null
+      and to_regclass('private.v2_step_up_grants') is not null
+      and to_regclass('private.v2_step_up_preparations') is not null
       and to_regprocedure('public.project_s_prepare_delegated_booking_v2(jsonb,uuid,uuid,jsonb)') is not null
-      and to_regprocedure('public.project_s_get_step_up_review_v2(jsonb,uuid)') is not null)::text;`) === 'true');
+      and to_regprocedure('public.project_s_get_step_up_review_v2(jsonb,uuid)') is not null
+      and to_regprocedure('public.project_s_approve_step_up_v2(jsonb,uuid,uuid,uuid,bigint,text)') is not null
+      and to_regprocedure('public.project_s_revoke_step_up_v2(jsonb,uuid,bigint)') is not null)::text;`) === 'true');
     stage = 'empty synthetic instance configuration';
     sql(`begin; lock table private.v2_authority_instance in exclusive mode;
       do $$begin if exists(select 1 from private.v2_authority_instance) then
@@ -508,6 +513,148 @@ async function main() {
       ) as owned where payload::text like '%booker@example.invalid%' or payload::text like '%Synthetic Booker%';`) === '0');
     record();
 
+    const stepUpApproval = { expectedRevision: exactReview.revision, summaryDigest: exactReview.summaryDigest };
+    stage = 'step-up approval requires the exact reviewed digest';
+    await refusal(async () => approveStepUpReview({ context: await reauthenticate(a), reviewId,
+      input: { ...stepUpApproval, summaryDigest: `${stepUpApproval.summaryDigest[0] === '0' ? '1' : '0'}${stepUpApproval.summaryDigest.slice(1)}` },
+      binding, rpc }), 'VERSION_CONFLICT', 409);
+    record();
+
+    stage = 'actor context cannot approve or revoke a principal step-up request';
+    calls = 0;
+    const approvingActor = await reauthenticateActor(registered);
+    await refusal(() => approveStepUpReview({ context: approvingActor, reviewId, input: stepUpApproval,
+      binding, rpc: observedRpc }), 'AUTHENTICATION_REQUIRED', 401);
+    await refusal(() => revokeStepUpReview({ context: approvingActor, reviewId, input: { expectedRevision: 1 },
+      binding, rpc: observedRpc }), 'AUTHENTICATION_REQUIRED', 401);
+    check(calls === 0);
+    record();
+
+    stage = 'foreign and missing step-up controls share one minimal refusal';
+    for (const hiddenReview of [reviewId, randomUUID()]) {
+      const hiddenApproval = await refusal(async () => approveStepUpReview({ context: await reauthenticate(b),
+        reviewId: hiddenReview, input: stepUpApproval, binding, rpc }), 'FORBIDDEN', 403);
+      const hiddenRevocation = await refusal(async () => revokeStepUpReview({ context: await reauthenticate(b),
+        reviewId: hiddenReview, input: { expectedRevision: 1 }, binding, rpc }), 'FORBIDDEN', 403);
+      check(JSON.stringify(hiddenApproval) === JSON.stringify(hiddenRevocation));
+    }
+    record();
+
+    stage = 'anonymous and authenticated clients cannot invoke step-up approval or revocation RPCs directly';
+    for (const caller of untrusted) {
+      const directApproval = await caller.rpc('project_s_approve_step_up_v2', {
+        p_context: await reauthenticate(a), p_review_id: reviewId,
+        p_preparation_id: randomUUID(), p_grant_id: randomUUID(),
+        p_expected_revision: 1, p_summary_digest: stepUpApproval.summaryDigest,
+      });
+      const directRevoke = await caller.rpc('project_s_revoke_step_up_v2', {
+        p_context: await reauthenticate(a), p_review_id: reviewId, p_expected_revision: 1,
+      });
+      check(directApproval.error?.code === '42501' && directRevoke.error?.code === '42501');
+    }
+    record();
+
+    stage = 'exact approval replaces the original mandate with one fresh bounded preparation';
+    const stepUpApprovalStarted = Date.now();
+    const stepUpApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId,
+      input: stepUpApproval, binding, rpc });
+    check(Object.keys(stepUpApproved).sort().join(',') === 'expiresAt,preparationId,reviewId,state' &&
+      stepUpApproved.reviewId === reviewId && stepUpApproved.state === 'approved' && uuid(stepUpApproved.preparationId) &&
+      stepUpApproved.preparationId !== prepared.data.preparationId);
+    check(Date.parse(stepUpApproved.expiresAt) > stepUpApprovalStarted &&
+      Date.parse(stepUpApproved.expiresAt) <= Date.now() + 5 * 60_000 &&
+      Date.parse(stepUpApproved.expiresAt) <= Date.parse(preparationMandate.expiresAt));
+    const replacedMandate = await getMandate({ context: await reauthenticate(a), mandateId: preparationMandate.mandateId, binding, rpc });
+    check(replacedMandate.state === 'revoked' && replacedMandate.revision === 2 && replacedMandate.remainingUses === 0);
+    check(sql(`select count(*) from private.v2_step_up_grants g join private.v2_step_up_preparations p
+      on (p.instance_id,p.epoch,p.principal_id,p.grant_id)=(g.instance_id,g.epoch,g.principal_id,g.grant_id)
+      where g.review_id=${literal(reviewId)} and g.instance_id=${literal(binding.instanceId)} and g.epoch=1
+      and g.principal_id=${literal(a.context.principalId)} and g.actor_id=${literal(registered.actorId)}
+      and g.state='active' and g.revision=1 and p.state='pending'
+      and p.preparation_id=${literal(stepUpApproved.preparationId)} and p.provider='principal_step_up' and p.provider_version=1
+      and p.expires_at=g.expires_at and p.expires_at=${literal(stepUpApproved.expiresAt)}::timestamptz;`) === '1');
+    check(sql(`select count(*) from private.v2_delegated_preparations where preparation_id=${literal(prepared.data.preparationId)}
+      and state='invalidated' and summary is null;`) === '1');
+    record();
+
+    stage = 'exact step-up approval retry preserves the original preparation expiry and event sequence';
+    const approvedSequence = sql(`select event_sequence from private.v2_authority_principals
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`);
+    const stepUpApprovalRetry = await approveStepUpReview({ context: await reauthenticate(a), reviewId,
+      input: stepUpApproval, binding, rpc });
+    check(JSON.stringify(stepUpApproved) === JSON.stringify(stepUpApprovalRetry));
+    check(sql(`select event_sequence from private.v2_authority_principals
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`) === approvedSequence);
+    check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(reviewId)};`) === '1');
+    record();
+
+    stage = 'approved step-up revocation invalidates the replacement and exact retry creates no event';
+    const revokedStepUp = await revokeStepUpReview({ context: await reauthenticate(a), reviewId,
+      input: { expectedRevision: 2 }, binding, rpc });
+    const revokedStepUpRetry = await revokeStepUpReview({ context: await reauthenticate(a), reviewId,
+      input: { expectedRevision: 2 }, binding, rpc });
+    check(revokedStepUp.reviewId === reviewId && revokedStepUp.state === 'revoked' && revokedStepUp.revision === 3 &&
+      JSON.stringify(revokedStepUp) === JSON.stringify(revokedStepUpRetry));
+    check(sql(`select count(*) from private.v2_step_up_grants g join private.v2_step_up_preparations p
+      on p.grant_id=g.grant_id where g.review_id=${literal(reviewId)} and g.state='revoked'
+      and p.state='invalidated' and p.summary is null;`) === '1');
+    await refusal(async () => approveStepUpReview({ context: await reauthenticate(a), reviewId,
+      input: stepUpApproval, binding, rpc }), 'VERSION_CONFLICT', 409);
+    record();
+
+    const createPendingStepUp = async () => {
+      const nextPolicy = { ...preparationPolicy,
+        notBefore: new Date(Date.now() + 6_000).toISOString().replace('Z', '000Z') };
+      const nextReview = await createMandateReview({ context: await reauthenticate(a), input: nextPolicy, binding, rpc });
+      const nextMandate = await approveMandate({ context: await reauthenticate(a), reviewId: nextReview.reviewId,
+        input: { expectedRevision: nextReview.revision, summaryDigest: nextReview.summaryDigest }, binding, rpc });
+      await waitForPermission(nextPolicy.notBefore);
+      const nextInput = { ...outsideInput, mandateId: nextMandate.mandateId };
+      const nextStep = await prepareDelegatedBooking({ context: await reauthenticateActor(registered), input: nextInput, binding, rpc });
+      check(nextStep.kind === 'step_up_required');
+      const nextExact = await getStepUpReview({ context: await reauthenticate(a), reviewId: nextStep.stepUp.reviewId, binding, rpc });
+      return { mandate: nextMandate, input: nextInput, exact: nextExact };
+    };
+
+    stage = 'pending step-up revocation is idempotent and leaves original authority active';
+    const linkedStepUp = await createPendingStepUp();
+    const pendingStepRevoke = await revokeStepUpReview({ context: await reauthenticate(a), reviewId: linkedStepUp.exact.reviewId,
+      input: { expectedRevision: 1 }, binding, rpc });
+    const pendingStepRevokeRetry = await revokeStepUpReview({ context: await reauthenticate(a), reviewId: linkedStepUp.exact.reviewId,
+      input: { expectedRevision: 1 }, binding, rpc });
+    check(pendingStepRevoke.state === 'revoked' && pendingStepRevoke.revision === 2 &&
+      JSON.stringify(pendingStepRevoke) === JSON.stringify(pendingStepRevokeRetry));
+    const pendingOriginal = await getMandate({ context: await reauthenticate(a), mandateId: linkedStepUp.mandate.mandateId, binding, rpc });
+    check(pendingOriginal.state === 'active' && pendingOriginal.remainingUses === 1);
+    record();
+
+    stage = 'revoking the original superseded mandate closes its unused replacement';
+    const linkedRequest = await prepareDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: linkedStepUp.input, binding, rpc });
+    check(linkedRequest.kind === 'step_up_required' && linkedRequest.stepUp.reviewId !== linkedStepUp.exact.reviewId);
+    const linkedExact = await getStepUpReview({ context: await reauthenticate(a), reviewId: linkedRequest.stepUp.reviewId, binding, rpc });
+    const linkedApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId: linkedExact.reviewId,
+      input: { expectedRevision: linkedExact.revision, summaryDigest: linkedExact.summaryDigest }, binding, rpc });
+    const linkedRevoked = await revokeMandate({ context: await reauthenticate(a), mandateId: linkedStepUp.mandate.mandateId,
+      input: { expectedRevision: 1 }, binding, rpc });
+    const linkedRevokedRetry = await revokeMandate({ context: await reauthenticate(a), mandateId: linkedStepUp.mandate.mandateId,
+      input: { expectedRevision: 1 }, binding, rpc });
+    check(linkedRevoked.state === 'revoked' && linkedRevoked.revision === 2 &&
+      JSON.stringify(linkedRevoked) === JSON.stringify(linkedRevokedRetry));
+    check(sql(`select count(*) from private.v2_step_up_grants g join private.v2_step_up_preparations p
+      on p.grant_id=g.grant_id where g.review_id=${literal(linkedExact.reviewId)} and g.state='revoked'
+      and p.preparation_id=${literal(linkedApproved.preparationId)} and p.state='invalidated' and p.summary is null;`) === '1');
+    record();
+
+    stage = 'a distinct approved replacement remains live for profile-dependent deletion proof';
+    const deletionStepUp = await createPendingStepUp();
+    const deletionApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId: deletionStepUp.exact.reviewId,
+      input: { expectedRevision: deletionStepUp.exact.revision, summaryDigest: deletionStepUp.exact.summaryDigest }, binding, rpc });
+    check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(deletionStepUp.exact.reviewId)}
+      and instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)} and state='active';`) === '1');
+    check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
+    record();
+
     stage = 'own deletion and exact retry remove PII without a second event';
     const deleted = await deleteReviewedBookerProfile({ context: await reauthenticate(a),
       profileId: created.profileId, input: { expectedRevision: 1 }, binding, rpc });
@@ -539,21 +686,41 @@ async function main() {
     await refusal(() => createMandateReview({ context: a.context, input: policy, binding, rpc }), 'VERSION_CONFLICT', 409);
     record();
 
-    stage = 'profile deletion atomically invalidates pending preparation and step-up rows';
-    for (const [table, idColumn, id] of [
-      ['v2_delegated_preparations', 'preparation_id', prepared.data.preparationId],
-      ['v2_step_up_requests', 'review_id', stepped.stepUp.reviewId],
+    stage = 'profile deletion preserves closed preparation and step-up privacy';
+    for (const [table, idColumn, id, state, timeColumn, sequenceColumn] of [
+      ['v2_delegated_preparations', 'preparation_id', prepared.data.preparationId, 'invalidated', 'invalidated_at', 'invalidated_sequence'],
+      ['v2_step_up_requests', 'review_id', stepped.stepUp.reviewId, 'revoked', 'revoked_at', 'revoked_sequence'],
     ]) {
       // Table/column identifiers come only from this fixed allowlist, never a response.
       check(sql(`select count(*) from private.${table} r join private.v2_booker_profiles p
         on (p.instance_id,p.epoch,p.principal_id,p.profile_id)=(r.instance_id,r.epoch,r.principal_id,r.profile_id)
         where r.${idColumn}=${literal(id)} and r.instance_id=${literal(binding.instanceId)} and r.epoch=1
-        and r.principal_id=${literal(a.context.principalId)} and r.state='invalidated'
+        and r.principal_id=${literal(a.context.principalId)} and r.state=${literal(state)}
         and r.summary is null
-        and r.invalidated_at=p.deleted_at and r.invalidated_sequence=p.deleted_sequence;`) === '1');
+        and r.${timeColumn}<=p.deleted_at and r.${sequenceColumn}<=p.deleted_sequence;`) === '1');
     }
     await refusal(async () => prepareDelegatedBooking({ context: await reauthenticateActor(registered),
       input: preparationInput, binding, rpc }), 'FORBIDDEN', 403);
+    record();
+
+    stage = 'profile deletion atomically invalidates the live approved replacement and clears every summary';
+    check(sql(`select count(*) from private.v2_step_up_grants g
+      join private.v2_step_up_preparations s on s.grant_id=g.grant_id
+      join private.v2_booker_profiles p on (p.instance_id,p.epoch,p.principal_id,p.profile_id)
+        =(g.instance_id,g.epoch,g.principal_id,g.profile_id)
+      where g.review_id=${literal(deletionStepUp.exact.reviewId)} and g.instance_id=${literal(binding.instanceId)}
+      and g.epoch=1 and g.principal_id=${literal(a.context.principalId)} and g.state='invalidated'
+      and g.revision=2 and g.revoked_at=p.deleted_at and g.revoked_sequence=p.deleted_sequence
+      and s.preparation_id=${literal(deletionApproved.preparationId)} and s.state='invalidated' and s.summary is null
+      and s.invalidated_at=p.deleted_at and s.invalidated_sequence=p.deleted_sequence;`) === '1');
+    check(sql(`select count(*) from private.v2_step_up_requests where review_id=${literal(deletionStepUp.exact.reviewId)}
+      and state='invalidated' and summary is null;`) === '1');
+    check(sql(`select count(*) from private.v2_step_up_preparations where instance_id=${literal(binding.instanceId)}
+      and epoch=1 and principal_id=${literal(a.context.principalId)} and summary is not null;`) === '0');
+    check(sql(`select count(*) from (
+      select to_jsonb(g) as payload from private.v2_step_up_grants g where instance_id=${literal(binding.instanceId)} and epoch=1
+      union all select to_jsonb(s) from private.v2_step_up_preparations s where instance_id=${literal(binding.instanceId)} and epoch=1
+      ) as owned where payload::text like '%booker@example.invalid%' or payload::text like '%Synthetic Booker%';`) === '0');
     record();
 
     stage = 'owner cannot read the exact step-up review after profile deletion';
@@ -587,7 +754,8 @@ async function main() {
       (select action,count(*) as n from private.v2_authority_events
         where instance_id=${literal(binding.instanceId)} and epoch=1 group by action) as counts;`));
     const expectedAuditCounts = { actor_registered: 2, actor_revoked: 1, profile_reviewed: 2, profile_deleted: 1,
-      mandate_reviewed: 4, mandate_approved: 3, mandate_revoked: 1, preparation_created: 1, step_up_requested: 1 };
+      mandate_reviewed: 6, mandate_approved: 5, mandate_revoked: 2, preparation_created: 1,
+      step_up_requested: 4, step_up_approved: 3, step_up_revoked: 2 };
     check(Object.keys(auditCounts).sort().join(',') === Object.keys(expectedAuditCounts).sort().join(','));
     for (const action of Object.keys(expectedAuditCounts)) check(auditCounts[action] === expectedAuditCounts[action]);
     check(sql(`select count(*) from (select sequence,
@@ -605,6 +773,8 @@ async function main() {
         const ids = users.map(literal).join(',');
         const ownerClause = ids ? `principal_id in (${ids})` : 'false';
         sql(`begin;
+          delete from private.v2_step_up_preparations where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
+          delete from private.v2_step_up_grants where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_delegated_preparations where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_step_up_requests where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_mandates where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
@@ -626,7 +796,7 @@ async function main() {
     }
   }
   check(!failed);
-  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up reviews: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
+  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up controls: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
 }
 
 try { await main(); }
