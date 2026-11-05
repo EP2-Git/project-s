@@ -173,20 +173,20 @@ test('the fragment confirmation page recovers from a lost confirmation response'
   });
   await localApproval.check();
   await expect(
-    page.getByRole('button', { name: 'Approve booking' }),
+    page.getByRole('button', { name: 'Approve this booking' }),
   ).toBeDisabled();
   await page
     .getByRole('checkbox', { name: /accept terms and privacy notice/i })
     .check();
-  await page.getByRole('button', { name: 'Approve booking' }).click();
+  await page.getByRole('button', { name: 'Approve this booking' }).click();
   await expect(page.getByRole('alert')).toBeVisible();
   expect(confirmationResponseWasLost).toBe(true);
 
   await page.unroute('**/api/v1/public/booking-preparations/confirm');
   await localApproval.check();
-  await page.getByRole('button', { name: 'Approve booking' }).click();
+  await page.getByRole('button', { name: 'Approve this booking' }).click();
   await expect(
-    page.getByRole('heading', { name: 'Human authority recorded' }),
+    page.getByRole('heading', { name: 'Approval recorded' }),
   ).toBeVisible();
 });
 

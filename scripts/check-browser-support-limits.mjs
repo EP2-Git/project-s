@@ -170,7 +170,7 @@ const tabTo = async (page, locator) => {
 };
 
 const approveByKeyboard = async (page) => {
-  const approve = page.getByRole('button', { name: 'Approve booking', exact: true });
+  const approve = page.getByRole('button', { name: 'Approve this booking', exact: true });
   await expect(approve).toBeDisabled();
   const terms = page.getByRole('checkbox', { name: /Accept terms and privacy notice/ });
   const human = page.getByRole('checkbox', { name: /I reviewed these details and am confirming this local development booking/ });
@@ -216,7 +216,8 @@ try {
             const staticGet = request.method() === 'GET' && url.origin === origin && (
               (request.isNavigationRequest() && url.pathname === '/booking/confirm') ||
               url.pathname.startsWith('/assets/') ||
-              url.pathname === '/favicon.ico'
+              url.pathname === '/favicon.ico' ||
+              url.pathname === '/favicon.svg'
             );
             if (staticGet) await route.continue();
             else {
@@ -244,25 +245,25 @@ try {
           if (scenario === 'oversized-preview' || scenario === 'rate-preview') {
             await expect(page.getByRole('alert')).toContainText(scenario === 'oversized-preview' ? protocolMessage : rateMessage);
             await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
-            await expect(page.getByRole('button', { name: 'Approve booking', exact: true })).toHaveCount(0);
+            await expect(page.getByRole('button', { name: 'Approve this booking', exact: true })).toHaveCount(0);
           } else {
-            await expect(page.getByText('Agent create is blocked', { exact: true })).toBeVisible();
+            await expect(page.getByText('What you’re approving', { exact: true })).toBeVisible();
             await expect(page.getByText('Synthetic Host Café 🧭', { exact: true })).toBeVisible();
             await expect(page.getByText('Synthetic Guest', { exact: true })).toBeVisible();
             await expect(page.getByText('guest@example.com', { exact: true })).toBeVisible();
             await approveByKeyboard(page);
             if (scenario === 'valid') {
-              const recorded = page.getByRole('heading', { name: 'Human authority recorded', exact: true });
+              const recorded = page.getByRole('heading', { name: 'Approval recorded', exact: true });
               await expect(recorded).toBeVisible();
               await expect(recorded).toBeFocused();
-              await expect(page.getByText('This page approved the exact preparation. It did not create or reserve a booking.', { exact: true })).toBeVisible();
+              await expect(page.getByText('Your approval was saved. The app or agent still needs to book the meeting.', { exact: true })).toBeVisible();
             } else {
               await expect(page.getByRole('alert')).toContainText(scenario === 'oversized-confirm' ? protocolMessage : rateMessage);
-              await expect(page.getByRole('button', { name: 'Approve booking', exact: true })).toBeDisabled();
+              await expect(page.getByRole('button', { name: 'Approve this booking', exact: true })).toBeDisabled();
             }
           }
           if (scenario !== 'valid') {
-            await expect(page.getByRole('heading', { name: 'Human authority recorded', exact: true })).toHaveCount(0);
+            await expect(page.getByRole('heading', { name: 'Approval recorded', exact: true })).toHaveCount(0);
           }
           assert.equal((await page.locator('body').innerText()).includes(privateDiagnostic), false);
           const result = await page.evaluate(() => globalThis.__projectSSupportLimits.snapshot());

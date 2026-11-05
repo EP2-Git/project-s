@@ -110,7 +110,7 @@ guided command does not reset the database. Follow all eight numbered stages:
 | 3. Availability | The seeded `Intro call` has a server-listed future slot. |
 | 4. Preparation | `notHeld=true`; the capability token and handoff URL are withheld from terminal output. |
 | 5. Refused create | `BLOCKED CONFIRMATION_REQUIRED` before browser approval; no commit occurred. |
-| 6. Browser authority | The default browser opens the exact review page. Inspect host, meeting, time zones and fictional guest fields; accept the notice, complete the local challenge, and choose **Approve booking**. Wait for **Human authority recorded**, then type `APPROVED` in the terminal. Typing it alone grants no authority. Approval itself has not created a booking. |
+| 6. Browser authority | The default browser opens the exact review page. Inspect host, meeting, time zones and fictional guest fields; accept the notice, complete the local challenge, and choose **Approve this booking**. Wait for **Approval recorded**, then type `APPROVED` in the terminal. Typing it alone grants no authority. Approval itself has not created a booking. |
 | 7. Commit and exact replay | The first create reports `status=confirmed`; an identical request returns the same result. A new idempotency key is not an exact replay. |
 | 8. Host cancellation | The script switches to the fictional host's authenticated session, resolves exactly one booking through RLS, and cancels using its current version. Expect `status=cancelled` and **Authority Boundary Demo complete**. |
 

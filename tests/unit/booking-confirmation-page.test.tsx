@@ -91,11 +91,13 @@ describe('prepared booking browser confirmation', () => {
     expect(
       await screen.findByRole('heading', { name: 'Review a prepared booking' }),
     ).toBeVisible();
-    expect(await screen.findByText('Agent create is blocked')).toBeVisible();
+    expect(await screen.findByRole('heading', { name: 'What you’re approving' })).toBeVisible();
     expect(screen.getByText('Authority Demo Guest')).toBeVisible();
-    expect(screen.getByText(/No booking exists yet/i)).toBeVisible();
+    expect(screen.getByText(/one booking with the exact details below/i)).toBeVisible();
+    expect(screen.getByText(/the host will receive the name, email, and notes/i)).toBeVisible();
+    expect(screen.getByText(/does not hold the time/i)).toBeVisible();
 
-    const approve = screen.getByRole('button', { name: 'Approve booking' });
+    const approve = screen.getByRole('button', { name: 'Approve this booking' });
     expect(approve).toBeDisabled();
 
     await user.click(
@@ -114,16 +116,35 @@ describe('prepared booking browser confirmation', () => {
     await user.click(approve);
 
     const recorded = await screen.findByRole('heading', {
-      name: 'Human authority recorded',
+      name: 'Approval recorded',
     });
     expect(recorded).toHaveFocus();
     expect(
-      screen.getByText(/It did not create or reserve a booking/i),
+      screen.getByText(/the app or agent still needs to book the meeting/i),
     ).toBeVisible();
     expect(serviceMocks.confirmPreparation).toHaveBeenCalledWith({
       preparationToken: 'prep_abcdefghijklmnopqrstuvwxyz0123456789',
       challengeToken: 'test-human-confirmation',
     });
+  });
+
+  it('describes only the fields the host receives when there are no notes', async () => {
+    serviceMocks.getPreparation.mockResolvedValue({
+      ...preview,
+      summary: {
+        ...preview.summary,
+        booker: { name: preview.summary.booker.name, email: preview.summary.booker.email },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <BookingConfirmationPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/the host will receive the name and email/i)).toBeVisible();
+    expect(screen.queryByText(/the host will receive the name, email, and notes/i)).not.toBeInTheDocument();
   });
 
   it('fails closed when the private preparation token is missing', async () => {

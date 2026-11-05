@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle2, Database, LockKeyhole } from 'lucide-react';
+import { CheckCircle2, LockKeyhole } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import BookingHeader from '@/components/booking/BookingHeader';
 import BookingReview from '@/components/booking/BookingReview';
@@ -99,12 +99,12 @@ const BookingConfirmationPage = () => {
       <main className="flex grow items-center justify-center p-4 sm:p-6">
         <Card className="w-full max-w-3xl shadow-md" aria-labelledby="confirmation-page-title">
           <CardHeader className="border-b">
-            <p className="text-sm font-medium text-muted-foreground">Authority boundary</p>
+            <p className="text-sm font-medium text-muted-foreground">Booking approval</p>
             <h1 id="confirmation-page-title" className="text-2xl font-semibold sm:text-3xl">
               Review a prepared booking
             </h1>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              An app or agent prepared this request. It cannot create the booking until Project S records your explicit approval for these exact details.
+              An app or agent is asking for your permission to book the meeting below.
             </p>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
@@ -125,33 +125,32 @@ const BookingConfirmationPage = () => {
                   tabIndex={-1}
                   className="mt-4 text-2xl font-semibold outline-hidden"
                 >
-                  Human authority recorded
+                  Approval recorded
                 </h2>
                 <p className="mx-auto mt-3 max-w-xl text-muted-foreground">
-                  This page approved the exact preparation. It did not create or reserve a booking.
+                  Your approval was saved. The app or agent still needs to book the meeting.
                 </p>
-                <div className="mx-auto mt-6 flex max-w-xl items-start gap-3 rounded-lg border bg-muted/20 p-4 text-left">
-                  <Database className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
-                  <p className="text-sm leading-6">
-                    Return to the app or agent that prepared the request. When it asks Project S to commit, the database will recheck the current time, policy, availability, confirmation, and authority under the host lock.
-                  </p>
-                </div>
+                <p className="mx-auto mt-6 max-w-xl rounded-lg border bg-muted/20 p-4 text-left text-sm leading-6">
+                  Return to the app or agent that asked for approval. Project S will check the time is still available when it tries to book.
+                </p>
               </section>
             ) : preview ? (
               <div>
-                <div
+                <section
                   className="mb-6 flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-4"
-                  role="status"
-                  aria-live="polite"
+                  aria-labelledby="approval-scope-title"
                 >
                   <LockKeyhole className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden="true" />
                   <div>
-                    <p className="font-medium">Agent create is blocked</p>
+                    <h2 id="approval-scope-title" className="font-medium">What you’re approving</h2>
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                      No booking exists yet, and this preparation holds no time. Project S requires this browser review before it records the one-use authority needed for a later create attempt.
+                      This approval allows one booking with the exact details below.
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                      The host will receive the {preview.summary.booker.notes ? 'name, email, and notes' : 'name and email'} shown below if the booking is created.
                     </p>
                   </div>
-                </div>
+                </section>
                 <BookingReview
                   preparationId={preview.preparationId}
                   expiresAt={preview.expiresAt}
@@ -177,8 +176,8 @@ const BookingConfirmationPage = () => {
                         <Link to="/terms" target="_blank" className="underline">
                           terms
                         </Link>{' '}
-                        and understand that my details will be shared with the host
-                        as described in the{' '}
+                          and understand that my details will be shared with the host
+                          as described in the{' '}
                         <Link to="/privacy" target="_blank" className="underline">
                           privacy notice
                         </Link>
@@ -188,7 +187,8 @@ const BookingConfirmationPage = () => {
                   }
                   onChallengeTokenChange={setChallengeToken}
                   onConfirm={confirm}
-                  confirmLabel="Approve booking"
+                  confirmLabel="Approve this booking"
+                  expiryMessage="This request expired. Ask the app or agent for a new approval link."
                 />
               </div>
             ) : (
