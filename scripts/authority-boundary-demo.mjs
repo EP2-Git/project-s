@@ -510,11 +510,11 @@ const run = async () => {
     await openDefaultBrowser(confirmationUrl);
     outcome('Opened the real Project S review page in the default browser.');
     console.log(
-      '      Review the fictional request and choose Approve booking. This script never calls the confirmation endpoint.',
+      '      Review the fictional request and choose Approve this booking. This script never calls the confirmation endpoint.',
     );
     terminal = createInterface({ input: process.stdin, output: process.stdout });
     const answer = await terminal.question(
-      '\n      After the browser says “Human authority recorded”, type APPROVED to retry: ',
+      '\n      After the browser says “Approval recorded”, type APPROVED to retry: ',
     );
     requireCondition(
       answer.trim() === 'APPROVED',

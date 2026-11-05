@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle2, Clock3, ShieldCheck } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatSlotDateTime, formatSlotTime } from '@/lib/time';
 import type { PreparedBookingSummary } from '@project-s/contracts';
@@ -19,6 +19,7 @@ interface BookingReviewProps {
   onConfirm(): Promise<void>;
   onBack?: () => void;
   confirmLabel?: string;
+  expiryMessage?: string;
 }
 
 const BookingReview = ({
@@ -35,8 +36,39 @@ const BookingReview = ({
   onConfirm,
   onBack,
   confirmLabel = 'Confirm and book',
+  expiryMessage = 'This review expired. Return to the booking page and prepare it again.',
 }: BookingReviewProps) => {
-  const expired = new Date(expiresAt).getTime() <= Date.now();
+  const expiresAtMs = Date.parse(expiresAt);
+  const [expiredDeadline, setExpiredDeadline] = useState<number | null>(null);
+  const expired = expiredDeadline === expiresAtMs || expiresAtMs <= Date.now();
+
+  useEffect(() => {
+    if (approvalRecorded || expired) return;
+
+    let timeoutId: number;
+    const scheduleExpiry = () => {
+      // Browser timers only support signed 32-bit delays.
+      const delay = Math.min(Math.max(expiresAtMs - Date.now(), 0), 2_147_483_647);
+      timeoutId = window.setTimeout(() => {
+        if (expiresAtMs <= Date.now()) {
+          setExpiredDeadline(expiresAtMs);
+        } else {
+          scheduleExpiry();
+        }
+      }, delay);
+    };
+    scheduleExpiry();
+
+    return () => window.clearTimeout(timeoutId);
+  }, [approvalRecorded, expired, expiresAtMs]);
+
+  const confirm = () => {
+    if (!approvalRecorded && (expired || expiresAtMs <= Date.now())) {
+      setExpiredDeadline(expiresAtMs);
+      return;
+    }
+    void onConfirm();
+  };
 
   return (
     <section className="mx-auto max-w-2xl" aria-labelledby="booking-review-title">
@@ -115,7 +147,7 @@ const BookingReview = ({
         </div>
       ) : expired ? (
         <p role="alert" className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
-          This review expired. Return to the booking page and prepare it again.
+          {expiryMessage}
         </p>
       ) : (
         <HumanConfirmationChallenge
@@ -141,7 +173,7 @@ const BookingReview = ({
             !confirmationReady ||
             (!approvalRecorded && (expired || !challengeToken))
           }
-          onClick={() => void onConfirm()}
+          onClick={confirm}
         >
           <ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />
           {busy ? 'Confirming…' : approvalRecorded ? 'Create booking' : confirmLabel}

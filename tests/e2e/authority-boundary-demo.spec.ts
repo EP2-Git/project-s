@@ -172,13 +172,15 @@ test('MCP remains blocked until browser approval, then commits once, replays, an
       page.getByRole('heading', { name: 'Review a prepared booking' }),
     ).toBeVisible();
     await expect(page).not.toHaveURL(/preparation=/);
-    await expect(page.getByText('Agent create is blocked')).toBeVisible();
+    const decision = page.getByRole('region', { name: 'What you’re approving' });
+    await expect(decision).toContainText(/one booking/i);
+    await expect(decision).toContainText(/name, email, and notes/i);
     await expect(page.getByText(guestName, { exact: true })).toBeVisible();
     await expect(page.getByText(guestEmail, { exact: true })).toBeVisible();
     await expect(
       page.getByText('This preparation does not hold the time.'),
     ).toBeVisible();
-    const approve = page.getByRole('button', { name: 'Approve booking' });
+    const approve = page.getByRole('button', { name: 'Approve this booking' });
     await expect(approve).toBeDisabled();
 
     await expectNoBlockingAxeFindings(page);
@@ -186,6 +188,8 @@ test('MCP remains blocked until browser approval, then commits once, replays, an
     await capture(page, '01-review-desktop');
 
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(decision.getByRole('heading')).toBeInViewport();
+    await expectNoBlockingAxeFindings(page);
     await expectNoHorizontalOverflow(page);
     await capture(page, '02-review-mobile');
 
@@ -195,19 +199,22 @@ test('MCP remains blocked until browser approval, then commits once, replays, an
       })
       .check();
     await expect(approve).toBeDisabled();
-    await page
-      .getByRole('checkbox', { name: /accept terms and privacy notice/i })
-      .check();
+    const notice = page.getByRole('checkbox', { name: /accept terms and privacy notice/i });
+    await notice.focus();
+    await page.keyboard.press('Space');
+    await expect(notice).toBeChecked();
     await expect(approve).toBeEnabled();
-    await approve.click();
+    await approve.focus();
+    await expect(approve).toBeFocused();
+    await page.keyboard.press('Enter');
 
     const approvalHeading = page.getByRole('heading', {
-      name: 'Human authority recorded',
+      name: 'Approval recorded',
     });
     await expect(approvalHeading).toBeVisible();
     await expect(approvalHeading).toBeFocused();
     await expect(
-      page.getByText(/It did not create or reserve a booking/i),
+      page.getByText(/The app or agent still needs to book the meeting/i),
     ).toBeVisible();
     await expectNoBlockingAxeFindings(page);
     await expectNoHorizontalOverflow(page);
