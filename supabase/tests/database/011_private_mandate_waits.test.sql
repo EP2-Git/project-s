@@ -167,6 +167,37 @@ select * from dblink_get_result('mandate_reader') as result(value text);
 select is((select count(*)::integer from private.v2_mandates
   where principal_id='e0100000-0000-4000-8000-000000000001'),0,'expired approval creates no mandate budget');
 
+-- The retention worker shares the principal fence. Hold it in another
+-- session through the worker timeout, then prove the same batch can retry.
+insert into project_s_mandate_wait.state
+  select 'retention-sequence',to_jsonb(event_sequence) from private.v2_authority_principals
+  where principal_id='e0100000-0000-4000-8000-000000000001';
+select is(dblink_exec('mandate_holder','begin'),'BEGIN','retention holder begins');
+select is(dblink_exec('mandate_holder',$lock$do $$begin
+  perform 1 from private.v2_authority_principals
+  where principal_id='e0100000-0000-4000-8000-000000000001' for update;
+end;$$$lock$),'DO','retention contends with the real principal fence');
+select throws_ok($$select private.v2_redact_expired_mandate_reviews(
+  'e0000000-0000-4000-8000-000000000001',1,'e0100000-0000-4000-8000-000000000001',1)$$,
+  'PT503','AUTHORITY_BUSY','retention bounds the fence wait');
+select ok((select state='pending' and policy_summary is not distinct from
+    (select value->'policySummary' from project_s_mandate_wait.state where key='review')
+  from private.v2_mandate_reviews where review_id='e0500000-0000-4000-8000-000000000001'),
+  'failed cleanup keeps the original review payload');
+select is((select to_jsonb(event_sequence) from private.v2_authority_principals
+  where principal_id='e0100000-0000-4000-8000-000000000001'),
+  (select value from project_s_mandate_wait.state where key='retention-sequence'),
+  'failed cleanup does not advance the principal sequence');
+select is((select count(*)::integer from private.v2_authority_events
+  where principal_id='e0100000-0000-4000-8000-000000000001' and action='expired_mandate_reviews_redacted'),
+  0,'failed cleanup writes no retention event');
+select is(dblink_exec('mandate_holder','commit'),'COMMIT','retention fence releases');
+select is(private.v2_redact_expired_mandate_reviews(
+  'e0000000-0000-4000-8000-000000000001',1,'e0100000-0000-4000-8000-000000000001',1),
+  1,'retry redacts the expired review after fence release');
+select ok((select state='invalidated' and policy_summary is null from private.v2_mandate_reviews
+  where review_id='e0500000-0000-4000-8000-000000000001'),'retry preserves the invalidated review fence');
+
 insert into project_s_mandate_wait.state values ('revoke-review',
   project_s_mandate_wait.review('e0500000-0000-4000-8000-000000000002'));
 insert into project_s_mandate_wait.state values ('revoke-mandate',

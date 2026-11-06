@@ -51,7 +51,7 @@ cleanup worker. Inspection does not revalidate the current host/type snapshot
 or establish admission; the future booking kernel must do that. This slice
 cannot spend a use. The separate
 [private preparation slice](private-delegated-preparations.md) adds actor intent
-validation and pending step-up requests; booking commit, exact step-up approval
+validation, pending step-up requests and exact step-up approval. Booking commit
 and receipts remain unimplemented.
 
 Revocation compares the original revision, records a minimal ordered audit
@@ -70,6 +70,24 @@ live checks occur after waits. The existing one-second lock/five-second
 function settings do not establish an outer admission deadline; that integration
 and the complete mixed booking lock graph still gate enablement.
 
+## Expired mandate review cleanup
+
+The private `v2_redact_expired_mandate_reviews` function implements the pending
+mandate-review portion of the synthetic retention policy in ADR 0004. The
+database owner can run it for one principal in the current synthetic instance
+and epoch, with a batch limit from 1 through 100. It locks that principal's
+existing fence and reads the expiry cutoff after acquiring it. It then clears
+the cached summary of the oldest expired pending reviews and moves them to the
+existing invalidated state. The review IDs, bindings and digests remain as
+refusal evidence. A nonempty batch records one ordered event containing only
+the principal reference, event type, sequence and timestamp.
+
+Expiry remains enforced on the approval path even before cleanup runs. An
+empty or repeated batch adds no event. The function uses the database caller's
+permissions and has no execution grant for browser clients or the service
+role. This slice provides a private operation for synthetic cleanup and tests.
+Scheduling cleanup and handling other retained records require later work.
+
 ## Verification and remaining work
 
 Shared Node/Deno vectors exercise exact normalized policy/microseconds, strict
@@ -83,8 +101,8 @@ verified bootstrap/loopback checks and scoped fixture cleanup remain.
 Report local, hosted and adapter-double evidence separately.
 
 Public v1 schemas/artifacts, four-tool discovery, scheduling/confirmation,
-browser appearance and host cancellation are unchanged. Retention cleanup,
-recovery/epoch invalidation, full delegated commit/step-up/replay/race proof,
+browser appearance and host cancellation are unchanged. Remaining retention
+cleanup, recovery/epoch invalidation, delegated commit/replay/race proof,
 issuer controls and genuine authorized activity monitoring remain required.
 Explicit synthetic enablement review remains separate; bilateral #18 and
 real-user/Cloud policy are still gated. This is progress toward a working
