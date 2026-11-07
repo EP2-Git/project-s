@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { prepareDelegatedBooking } from '../../supabase/functions/_shared/delegatedPreparations.ts';
+import { commitDelegatedBooking, prepareDelegatedBooking, readDelegatedBookingReceipt }
+  from '../../supabase/functions/_shared/delegatedPreparations.ts';
 
 // Shared Node/Deno adapter vectors; database/Auth/locking evidence is separate.
 const test = globalThis.Deno?.test ? globalThis.Deno.test.bind(globalThis.Deno) : (await import('node:test')).default;
@@ -23,6 +24,13 @@ const stepUp = { kind: 'step_up_required', stepUp: { reviewId,
   reviewUrl: `${binding.audience}/authority/review#review=${reviewId}`, expiresAt: '2030-02-04T12:05:00.000001Z' } };
 const diagnostic = 'private upstream diagnostic guest@example.invalid';
 const base = { context, input, binding };
+const receiptId = '45454545-4545-4545-8545-454545454545';
+const retryKey = '55555555-5555-4555-8555-555555555555';
+const commitInput = { preparationId, idempotencyKey: retryKey };
+const { hostDisplayName: _hostDisplayName, ...bookingFields } = summary;
+const receipt = { receiptId, receiptExpiresAt: '2030-02-05T12:00:00.000001Z',
+  booking: { ...bookingFields, guestTimeZone: '+05:30', confirmationCode: 'synthetic-confirmation', status: 'confirmed' } };
+const commitBase = { context, binding, input: commitInput };
 const failure = (code, status) => (error) => {
   assert.equal(error.code, code); assert.equal(error.status, status);
   const text = `${String(error)} ${JSON.stringify(error)}`;
@@ -32,6 +40,64 @@ const failure = (code, status) => (error) => {
   if (code === 'AUTHORITY_BUSY') assert.deepEqual(error.retry, { action: 'retry_after', afterSeconds: 1 });
   return true;
 };
+
+test('delegated commit: exact retry keeps the same preparation and key, and reads only the bound receipt', async () => {
+  const calls = [];
+  const rpc = async (name, args) => {
+    calls.push([name, args]);
+    return { data: receipt, error: null };
+  };
+  assert.deepEqual(await commitDelegatedBooking({ ...commitBase, rpc }), receipt);
+  assert.deepEqual(await commitDelegatedBooking({ ...commitBase, rpc }), receipt);
+  assert.deepEqual(await readDelegatedBookingReceipt({ context, binding, receiptId, rpc }), receipt);
+  assert.deepEqual(calls, [
+    ['project_s_commit_delegated_booking_v2', { p_context: context, p_preparation_id: preparationId, p_idempotency_key: retryKey }],
+    ['project_s_commit_delegated_booking_v2', { p_context: context, p_preparation_id: preparationId, p_idempotency_key: retryKey }],
+    ['project_s_read_delegated_booking_receipt_v2', { p_context: context, p_receipt_id: receiptId }],
+  ]);
+});
+
+test('delegated commit: malformed, caller-supplied identity and extra fields fail before RPC', async () => {
+  let calls = 0;
+  const rpc = async () => { calls++; return { data: receipt, error: null }; };
+  for (const value of [null, { ...commitInput, principalId }, { ...commitInput, approved: true },
+    { ...commitInput, idempotencyKey: 'invalid' }, JSON.parse(`{${JSON.stringify(commitInput).slice(1, -1)},"__proto__":{}}`)]) {
+    await assert.rejects(commitDelegatedBooking({ ...commitBase, input: value, rpc }), failure('VALIDATION_ERROR', 400));
+  }
+  await assert.rejects(commitDelegatedBooking({ ...commitBase, context: { ...context, subjectId: actorId }, rpc }),
+    failure('AUTHENTICATION_REQUIRED', 401));
+  await assert.rejects(readDelegatedBookingReceipt({ context, binding, receiptId: 'invalid', rpc }),
+    failure('VALIDATION_ERROR', 400));
+  assert.equal(calls, 0);
+});
+
+test('delegated receipt: strict fields reject accidental secrets, prototypes and mismatched lookup IDs', async () => {
+  for (const raw of [{ ...receipt, idempotencyKey: retryKey },
+    { ...receipt, booking: { ...receipt.booking, email: 'guest@example.invalid' } },
+    { ...receipt, booking: JSON.parse(`{${JSON.stringify(receipt.booking).slice(1, -1)},"__proto__":{}}`) }]) {
+    await assert.rejects(commitDelegatedBooking({ ...commitBase, rpc: async () => ({ data: raw }) }),
+      failure('INTERNAL_ERROR', 500));
+  }
+  await assert.rejects(readDelegatedBookingReceipt({ context, binding, receiptId: preparationId,
+    rpc: async () => ({ data: receipt }) }), failure('INTERNAL_ERROR', 500));
+});
+
+test('delegated commit and receipt: canonical refusals remain distinct and private failures stay redacted', async () => {
+  for (const [sqlstate, message, code, status] of [
+    ['PT409', 'IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENCY_KEY_REUSED', 409],
+    ['PT409', 'SLOT_UNAVAILABLE', 'SLOT_UNAVAILABLE', 409],
+    ['PT409', 'PREPARATION_STALE', 'PREPARATION_STALE', 409],
+    ['PT410', 'MANDATE_EXPIRED', 'MANDATE_EXPIRED', 410],
+    ['PT410', 'RECEIPT_UNAVAILABLE', 'RECEIPT_UNAVAILABLE', 410],
+    ['PT503', diagnostic, 'AUTHORITY_BUSY', 503],
+    ['PT410', diagnostic, 'INTERNAL_ERROR', 500],
+  ]) {
+    await assert.rejects(commitDelegatedBooking({ ...commitBase,
+      rpc: async () => ({ error: { code: sqlstate, message } }) }), failure(code, status));
+  }
+  await assert.rejects(readDelegatedBookingReceipt({ context, binding, receiptId,
+    rpc: async () => { throw new Error(diagnostic); } }), failure('INTERNAL_ERROR', 500));
+});
 
 test('delegated preparations: strict actor/request normalization retains all microseconds', async () => {
   let calls = 0;

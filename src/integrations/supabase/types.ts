@@ -376,6 +376,14 @@ export type Database = {
         }
         Returns: Json
       }
+      project_s_commit_delegated_booking_v2: {
+        Args: {
+          p_context: Json
+          p_idempotency_key: string
+          p_preparation_id: string
+        }
+        Returns: Json
+      }
       project_s_create_booker_profile_v2: {
         Args: { p_context: Json; p_profile: Json; p_profile_id: string }
         Returns: Json
@@ -415,6 +423,10 @@ export type Database = {
           p_request: Json
           p_step_up_id: string
         }
+        Returns: Json
+      }
+      project_s_read_delegated_booking_receipt_v2: {
+        Args: { p_context: Json; p_receipt_id: string }
         Returns: Json
       }
       project_s_register_actor_v2: {
