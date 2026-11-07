@@ -54,8 +54,10 @@ local data while evaluating it.
   review/approval/revocation and profile-dependent invalidation; no delegated
   booking or public controls are enabled.
 - [Private delegated preparation](private-delegated-preparations.md) — current
-  actor/policy/scheduling validation and bounded pending step-up requests; no
-  delegated commit or approval UI is enabled.
+  actor, policy and scheduling validation and bounded pending step-up requests.
+- [Private delegated booking commit](private-delegated-booking-commit.md) —
+  standing-mandate commit, one-use budget and caller-bound receipt. Delegated
+  routes and the approval interface still require enablement review.
 - [TypeScript SDK](../packages/sdk/README.md) — source-workspace client usage.
 - [Local stdio MCP](mcp-local-stdio.md) and
   [tool manifest](mcp-tool-manifest.md) — the client-launched MCP adapter.

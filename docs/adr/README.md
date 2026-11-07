@@ -13,6 +13,7 @@ ADR is the durable repository record.
 | [0003](0003-authority-provider-bounded-mandates.md) | Accepted foundation; implementation gated | Authority providers and guest-side bounded mandates; D1-D5 and remaining implementation-design gates. |
 | [0004](0004-bounded-mandate-implementation.md) | Accepted for implementation; proof and enablement gated | Concrete C1-C4 credential, step-up, synthetic retention and locking choices. |
 | [0005](0005-zod-4-compatibility-migration.md) | Accepted for implementation; integration and merge gated | Zod 4 migration preserving wire behavior, normalization and contract artifacts. |
+| [0006](0006-delegated-booking-timezone-projection.md) | Accepted for synthetic implementation | Preserve the reviewed timezone in the private receipt and use the existing nullable legacy field. |
 
 The [public booking capability ledger](public-booking-capability-ledger.md)
 tracks the current four-operation contract and is reviewed alongside ADR 0001.
