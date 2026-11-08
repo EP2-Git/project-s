@@ -71,10 +71,11 @@ required before the separate synthetic enablement review.
 The [private delegated preparation](docs/private-delegated-preparations.md)
 slice validates current actor permission and scheduling for an exact intent,
 with bounded pending step-up requests outside scope, private issuer review,
-exact approval and linked revocation. Atomic delegated commit,
-and caller-bound receipts now have a [private standing-mandate slice](docs/private-delegated-booking-commit.md).
-Exact exception commit, broader race and cleanup/recovery proof, and real
-controls remain required before delegated routes can be enabled.
+exact approval and linked revocation. The
+[private commit and receipt slice](docs/private-delegated-booking-commit.md)
+uses a shared one-booking budget for standing permission and exact approved
+exceptions. Broader race and cleanup/recovery proof and real controls remain
+required before delegated routes can be enabled.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 

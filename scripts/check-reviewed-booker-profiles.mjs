@@ -86,8 +86,13 @@ async function main() {
     createMandateReview, approveMandate, getMandate, revokeMandate, getStepUpReview,
     approveStepUpReview, revokeStepUpReview,
   } = await import('../supabase/functions/_shared/mandateControls.ts');
-  const { prepareDelegatedBooking } = await import('../supabase/functions/_shared/delegatedPreparations.ts');
+  const { prepareDelegatedBooking, commitDelegatedBooking, readDelegatedBookingReceipt } =
+    await import('../supabase/functions/_shared/delegatedPreparations.ts');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
+  const removeFixtureBookings = (ids, ownerClause) => `
+    delete from public.bookings where user_id in (${ids}) and id in (
+      select booking_id from private.v2_booking_receipts
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause});`;
   const users = [];
   const clients = [];
   let configured = false;
@@ -117,23 +122,30 @@ async function main() {
     return { browser, authorization, context };
   };
   try {
-    stage = 'required private preparation and step-up approval schema';
+    stage = 'required private preparation, step-up and receipt schema';
     // An owned but unmigrated stack must be refused before creating fixtures:
     // cleanup cannot safely reference tables that do not exist yet.
     check(sql(`select (to_regclass('private.v2_delegated_preparations') is not null
       and to_regclass('private.v2_step_up_requests') is not null
       and to_regclass('private.v2_step_up_grants') is not null
       and to_regclass('private.v2_step_up_preparations') is not null
+      and to_regclass('private.v2_booking_epoch_keys') is not null
+      and exists (select 1 from information_schema.columns where table_schema='private'
+        and table_name='v2_booking_receipts' and column_name='step_up_preparation_id')
       and to_regprocedure('public.project_s_prepare_delegated_booking_v2(jsonb,uuid,uuid,jsonb)') is not null
       and to_regprocedure('public.project_s_get_step_up_review_v2(jsonb,uuid)') is not null
       and to_regprocedure('public.project_s_approve_step_up_v2(jsonb,uuid,uuid,uuid,bigint,text)') is not null
-      and to_regprocedure('public.project_s_revoke_step_up_v2(jsonb,uuid,bigint)') is not null)::text;`) === 'true');
+      and to_regprocedure('public.project_s_revoke_step_up_v2(jsonb,uuid,bigint)') is not null
+      and to_regprocedure('public.project_s_commit_delegated_booking_v2(jsonb,uuid,uuid)') is not null
+      and to_regprocedure('public.project_s_read_delegated_booking_receipt_v2(jsonb,uuid)') is not null)::text;`) === 'true');
     stage = 'empty synthetic instance configuration';
     sql(`begin; lock table private.v2_authority_instance in exclusive mode;
       do $$begin if exists(select 1 from private.v2_authority_instance) then
         raise exception 'Disposable authority instance is not empty'; end if; end$$;
       insert into private.v2_authority_instance(instance_id,epoch,audience)
-      values(${literal(binding.instanceId)},1,${literal(binding.audience)}); commit;`);
+      values(${literal(binding.instanceId)},1,${literal(binding.audience)});
+      insert into private.v2_booking_epoch_keys(instance_id,epoch) values(${literal(binding.instanceId)},1);
+      commit;`);
     configured = true;
     stage = 'two independent real Auth signups and principal verification';
     const a = await signup();
@@ -342,7 +354,7 @@ async function main() {
       and policy_summary ->> 'email'='booker@example.invalid';`) === '1');
     record();
 
-    stage = 'real saved host schedule exposes two future free slots';
+    stage = 'real saved host schedule exposes three future free slots';
     const monday = new Date();
     monday.setUTCHours(12, 0, 0, 0);
     monday.setUTCDate(monday.getUTCDate() + ((1 - monday.getUTCDay() + 7) % 7 || 7));
@@ -351,8 +363,8 @@ async function main() {
       'startAt',private.v2_mandate_instant(slot_start),'endAt',private.v2_mandate_instant(slot_end))
       order by slot_start),'[]'::jsonb) from (select slot_start,slot_end from private.compute_free_slots_v1(
         ${literal(host.data.username)},${literal(meeting.data.id)},${literal(dateKey)}::date,'UTC',clock_timestamp())
-        order by slot_start limit 2) as free_slots;`));
-    check(slots.length === 2 && Date.parse(slots[0].startAt) > Date.now() &&
+        order by slot_start limit 3) as free_slots;`));
+    check(slots.length === 3 && Date.parse(slots[0].startAt) > Date.now() &&
       Date.parse(slots[0].endAt) - Date.parse(slots[0].startAt) === 30 * 60_000 &&
       Date.parse(slots[1].endAt) > Date.parse(slots[0].endAt));
     record();
@@ -602,14 +614,14 @@ async function main() {
       input: stepUpApproval, binding, rpc }), 'VERSION_CONFLICT', 409);
     record();
 
-    const createPendingStepUp = async () => {
+    const createPendingStepUp = async (startAt = outsideInput.startAt) => {
       const nextPolicy = { ...preparationPolicy,
         notBefore: new Date(Date.now() + 6_000).toISOString().replace('Z', '000Z') };
       const nextReview = await createMandateReview({ context: await reauthenticate(a), input: nextPolicy, binding, rpc });
       const nextMandate = await approveMandate({ context: await reauthenticate(a), reviewId: nextReview.reviewId,
         input: { expectedRevision: nextReview.revision, summaryDigest: nextReview.summaryDigest }, binding, rpc });
       await waitForPermission(nextPolicy.notBefore);
-      const nextInput = { ...outsideInput, mandateId: nextMandate.mandateId };
+      const nextInput = { ...outsideInput, startAt, mandateId: nextMandate.mandateId };
       const nextStep = await prepareDelegatedBooking({ context: await reauthenticateActor(registered), input: nextInput, binding, rpc });
       check(nextStep.kind === 'step_up_required');
       const nextExact = await getStepUpReview({ context: await reauthenticate(a), reviewId: nextStep.stepUp.reviewId, binding, rpc });
@@ -653,6 +665,28 @@ async function main() {
     check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(deletionStepUp.exact.reviewId)}
       and instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)} and state='active';`) === '1');
     check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
+    record();
+
+    stage = 'live actor commits one separately approved exact exception and recovers the receipt';
+    const bookingStepUp = await createPendingStepUp(slots[2].startAt);
+    const bookingApproved = await approveStepUpReview({ context: await reauthenticate(a),
+      reviewId: bookingStepUp.exact.reviewId,
+      input: { expectedRevision: bookingStepUp.exact.revision, summaryDigest: bookingStepUp.exact.summaryDigest },
+      binding, rpc });
+    const bookingInput = { preparationId: bookingApproved.preparationId, idempotencyKey: randomUUID() };
+    const receipt = await commitDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: bookingInput, binding, rpc });
+    check(uuid(receipt.receiptId) && receipt.booking.startAt === slots[2].startAt &&
+      receipt.booking.endAt === slots[2].endAt && receipt.booking.guestTimeZone === 'America/Halifax');
+    const bookingRetry = await commitDelegatedBooking({ context: await reauthenticateActor(registered),
+      input: bookingInput, binding, rpc });
+    const readReceipt = await readDelegatedBookingReceipt({ context: await reauthenticateActor(registered),
+      receiptId: receipt.receiptId, binding, rpc });
+    check(JSON.stringify(receipt) === JSON.stringify(bookingRetry) &&
+      JSON.stringify(receipt) === JSON.stringify(readReceipt));
+    check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)}
+      and meeting_type_id=${literal(meeting.data.id)} and start_time=${literal(slots[2].startAt)}::timestamptz
+      and status='confirmed';`) === '1');
     record();
 
     stage = 'own deletion and exact retry remove PII without a second event';
@@ -736,10 +770,15 @@ async function main() {
     await refusal(() => reauthenticateActor(registered), 'AUTHENTICATION_REQUIRED', 401);
     await refusal(() => prepareDelegatedBooking({ context: cachedActorContext, input: preparationInput, binding, rpc }),
       'AUTHENTICATION_REQUIRED', 401);
+    await refusal(() => readDelegatedBookingReceipt({ context: cachedActorContext, receiptId: receipt.receiptId,
+      binding, rpc }), 'AUTHENTICATION_REQUIRED', 401);
     record();
 
     stage = 'live account deletion invalidates an already verified context';
-    sql(`delete from auth.users where id=${literal(b.context.principalId)};`);
+    sql(`begin;
+      ${removeFixtureBookings(literal(b.context.principalId), `principal_id=${literal(a.context.principalId)}`)}
+      delete from auth.users where id=${literal(b.context.principalId)};
+      commit;`);
     await refusal(() => createReviewedBookerProfile({ context: b.context, input: profile, binding, rpc }),
       'AUTHENTICATION_REQUIRED', 401);
     await refusal(() => authenticatePrincipal({ authorization: b.authorization,
@@ -754,8 +793,8 @@ async function main() {
       (select action,count(*) as n from private.v2_authority_events
         where instance_id=${literal(binding.instanceId)} and epoch=1 group by action) as counts;`));
     const expectedAuditCounts = { actor_registered: 2, actor_revoked: 1, profile_reviewed: 2, profile_deleted: 1,
-      mandate_reviewed: 6, mandate_approved: 5, mandate_revoked: 2, preparation_created: 1,
-      step_up_requested: 4, step_up_approved: 3, step_up_revoked: 2 };
+      mandate_reviewed: 7, mandate_approved: 6, mandate_revoked: 2, preparation_created: 1,
+      step_up_requested: 5, step_up_approved: 4, step_up_revoked: 2, booking_committed: 1 };
     check(Object.keys(auditCounts).sort().join(',') === Object.keys(expectedAuditCounts).sort().join(','));
     for (const action of Object.keys(expectedAuditCounts)) check(auditCounts[action] === expectedAuditCounts[action]);
     check(sql(`select count(*) from (select sequence,
@@ -773,6 +812,8 @@ async function main() {
         const ids = users.map(literal).join(',');
         const ownerClause = ids ? `principal_id in (${ids})` : 'false';
         sql(`begin;
+          ${ids ? removeFixtureBookings(ids, ownerClause) : ''}
+          delete from private.v2_booking_receipts where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_step_up_preparations where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_step_up_grants where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_delegated_preparations where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
@@ -783,6 +824,7 @@ async function main() {
           delete from private.v2_actor_credentials where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_authority_events where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
           delete from private.v2_authority_principals where instance_id=${literal(binding.instanceId)} and epoch=1 and ${ownerClause};
+          delete from private.v2_booking_epoch_keys where instance_id=${literal(binding.instanceId)} and epoch=1;
           ${ids ? `delete from auth.users where id in (${ids});` : ''}
           delete from private.v2_authority_instance where instance_id=${literal(binding.instanceId)} and epoch=1
             and not exists(select 1 from private.v2_authority_principals where instance_id=${literal(binding.instanceId)} and epoch=1);
@@ -796,7 +838,7 @@ async function main() {
     }
   }
   check(!failed);
-  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up controls: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
+  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up commit: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
 }
 
 try { await main(); }
