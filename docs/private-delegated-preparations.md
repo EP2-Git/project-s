@@ -5,8 +5,10 @@ the [private mandate controls](private-mandate-controls.md) under accepted
 [ADR 0004](adr/0004-bounded-mandate-implementation.md). A freshly verified actor
 can prepare an exact in-scope meeting or create a bounded pending step-up request
 outside its current permission. The verified issuer can privately inspect,
-approve or revoke that request. Public transport, the issuer interface and
-delegated booking commit require further implementation and enablement review.
+approve or revoke that request. The separate
+[private commit RPC](private-delegated-booking-commit.md) accepts eligible
+preparations. Public transport and the issuer interface require further
+implementation and enablement review.
 
 ## Live caller, policy and scheduling checks
 
@@ -133,8 +135,8 @@ The issuer-review migration adds a single function and service-only execute
 permission. It changes no stored records and can be removed after its internal
 callers have been disabled.
 
-Atomic one-use booking commit, receipts/replay, full mixed races,
-retention/recovery, transports and working authorized issuer/monitoring UI remain.
+Full mixed races, retention/recovery, transports and a working authorized
+issuer and monitoring interface remain.
 Separate explicit synthetic enablement review and bilateral #18 proof are still
 required. Prefer forward repair with routes disabled; preserve pending
 references, invalidation and audit fences. Code rollback cannot revoke durable
