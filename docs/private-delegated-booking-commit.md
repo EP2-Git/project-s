@@ -37,6 +37,21 @@ The private receipt preserves the exact reviewed guest timezone. The existing
 booking row stores it when its validator accepts it and otherwise uses null,
 per [ADR 0006](adr/0006-delegated-booking-timezone-projection.md).
 
+## Concurrent bookings and revocation
+
+The disposable PostgreSQL race suite overlaps transactions on independent
+connections. It exercises both winner orders when a confirmed v1 preparation
+and a delegated preparation target the same slot, for both standing mandates
+and approved exceptions. When v1 holds the host lock, v2 returns
+`AUTHORITY_BUSY`. After the v1 transaction commits, retrying with the same
+preparation and key returns `SLOT_UNAVAILABLE`. When v2 wins, the waiting v1
+commit returns `SLOT_UNAVAILABLE` and leaves its confirmation unused.
+
+The suite also exercises both commit/revocation orders. A first commit
+serialized after revocation refuses. Revocation serialized after a successful
+commit stops further use while the original active credential can still
+recover the confirmed receipt.
+
 ## Key custody and enablement
 
 The domain-separated retry digest uses one database-owned key per synthetic
@@ -48,8 +63,8 @@ through their live bindings. Epoch rotation and restoration must use the
 separate reviewed recovery procedure before any re-enable.
 
 The implementation proof uses disposable PostgreSQL tests, a local-stack Auth
-and RPC rehearsal, and shared Node and Deno adapter vectors. Mixed v1/v2
-concurrency proof, broader retention and recovery, the authorized interface,
-public transports and the separate enablement review are later gates. Keep authority and receipt
-state when repairing a failure. Reverting an application change cannot undo a
-booking or safely restore a consumed use.
+and RPC rehearsal, and shared Node and Deno adapter vectors. Additional
+authority race cases, broader retention and recovery, the authorized interface,
+public transports and the separate enablement review remain open. Keep
+authority and receipt state when repairing a failure. Reverting an application
+change cannot undo a booking or safely restore a consumed use.
