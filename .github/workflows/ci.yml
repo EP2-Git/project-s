@@ -124,6 +124,17 @@ jobs:
         run: npm run test:authority:live
         env:
           PROJECT_S_DISPOSABLE_AUTHORITY_TEST: '1'
+      - name: Prove the receipt upgrade with an existing standing booking
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          node node_modules/supabase/dist/supabase.js db reset --local --version 20261107000100 --no-seed
+          node scripts/wait-for-local-db.mjs
+          docker exec -i supabase_db_project-s-local psql -X -q -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            < supabase/tests/upgrade/standing-receipt-before.sql
+          node node_modules/supabase/dist/supabase.js migration up --local
+          docker exec -i supabase_db_project-s-local psql -X -q -U postgres -d postgres -v ON_ERROR_STOP=1 \
+            < supabase/tests/upgrade/standing-receipt-after.sql
       - run: npm run db:reset
       - name: Prove a second clean reset
         run: npm run db:reset
