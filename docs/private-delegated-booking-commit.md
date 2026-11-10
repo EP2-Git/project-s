@@ -52,6 +52,15 @@ serialized after revocation refuses. Revocation serialized after a successful
 commit stops further use while the original active credential can still
 recover the confirmed receipt.
 
+## Upgrading an existing receipt
+
+The database CI job resets its disposable stack to the standing-only schema
+and commits a synthetic booking through the existing RPC. It then applies the
+forward migration to that populated database. The rehearsal checks the
+original booking, receipt, retry binding and audit across the upgrade, and
+verifies that the same caller can recover the receipt while the original
+mandate stays consumed.
+
 ## Key custody and enablement
 
 The domain-separated retry digest uses one database-owned key per synthetic
