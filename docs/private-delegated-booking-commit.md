@@ -61,6 +61,19 @@ original booking, receipt, retry binding and audit across the upgrade, and
 verifies that the same caller can recover the receipt while the original
 mandate stays consumed.
 
+## Expired receipt cleanup
+
+Receipt access ends after 24 hours even if cleanup has yet to run. The database
+owner can use the private `v2_redact_expired_booking_receipts` function to
+clear expired receipt payloads for one principal in batches of up to 100.
+Cleanup records a minimal audit event for each batch that clears data and
+keeps the bindings needed to refuse a repeat booking. The confirmed booking
+remains subject to the host's existing retention rules.
+
+This implements receipt redaction for the synthetic policy in ADR 0004.
+Scheduling cleanup, purging old bindings and recovering from a restored
+database are separate steps before enablement.
+
 ## Key custody and enablement
 
 The domain-separated retry digest uses one database-owned key per synthetic
