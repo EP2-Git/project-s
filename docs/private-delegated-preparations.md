@@ -63,7 +63,7 @@ cached summaries, including guest timezone, under the same fence/audit event as
 dependent mandate revocation and PII removal. Credential or
 mandate revocation/expiry denies subsequent preparation retries. Record creation
 and minimal sequenced audit commit together; audit failure rolls everything
-back. Expiry does not rely on purge; retention cleanup/recovery remain required.
+back. Live operations enforce expiry independently of cleanup.
 
 ## Issuer review of a recorded request
 
@@ -107,6 +107,28 @@ copies. Earlier revocation timestamps retain their original meaning. Minimal
 audit, replacement state and invalidation commit atomically. A late supporting
 expiry after a database wait rolls the entire approval back.
 
+## Expired summary retention
+
+For synthetic local instances, a database owner can call the private
+`v2_redact_expired_delegated_summaries(instance_id, epoch, principal_id, limit)`
+operation. It serializes with existing authority operations on that principal
+and uses database time after acquiring the fence. Each call invalidates and
+clears the cached summary on up to 100 expired rows across standing
+preparations, pending step-up requests and replacement preparations. The shared
+limit selects oldest deadlines first. Equal deadlines use that table order,
+then UUID order within each table. A nonempty batch records one minimal
+`expired_delegated_summaries_redacted` event. An audit failure rolls back the
+batch. The function returns the number of summaries cleared.
+
+Approved source requests retain their decision and binding. An approved
+replacement preparation has its own deadline. Once cleanup invalidates an
+expired pending review, a late revoke returns the existing `VERSION_CONFLICT`
+response for stale state. Request references, host snapshots, difference
+labels, digests and creation times remain in private storage for binding and
+rate accounting. The operation leaves grant, usage, booking and receipt records
+intact. Scheduling cleanup and purging retained binding and audit records are
+separate retention work.
+
 ## Time-zone compatibility
 
 Availability search uses the requested instant's UTC date and UTC display zone
@@ -135,8 +157,13 @@ The issuer-review migration adds a single function and service-only execute
 permission. It changes no stored records and can be removed after its internal
 callers have been disabled.
 
-Full mixed races, retention/recovery, transports and a working authorized
-issuer and monitoring interface remain.
+The summary cleanup migration adds an owner-only function, private selection
+indexes and an audit action. To stop cleanup, stop invoking the function.
+Retain earlier events and invalidation references when repairing forward.
+Cleared summaries cannot be restored through code rollback.
+
+Remaining mixed races, retention/recovery, transports and a working authorized
+issuer and monitoring interface still gate enablement.
 Separate explicit synthetic enablement review and bilateral #18 proof are still
 required. Prefer forward repair with routes disabled; preserve pending
 references, invalidation and audit fences. Code rollback cannot revoke durable
