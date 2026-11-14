@@ -224,12 +224,14 @@ async function runCycle({ context, identity, runId, cycle, password, previousId,
     )));
     check(headers.apikey === context.anonKey && headers.authorization === `Bearer ${context.anonKey}`);
     replay = { input: response.request().postDataJSON(), headers };
-    const originalResult = await response.json();
+    const confirmed = guest.getByRole('status', { name: 'Booking confirmed', exact: true });
+    await confirmed.waitFor();
+    const confirmationCode = await confirmed.getByText('Confirmation', { exact: true })
+      .locator('xpath=following-sibling::dd[1]').innerText();
     const exactReplay = await replayClient(replay).public.createBooking(replay.input);
-    check(exactReplay.data.confirmationCode === originalResult.data.confirmationCode);
+    check(exactReplay.data.confirmationCode === confirmationCode);
     const bookingElapsedMs = Math.round(performance.now() - cycleStarted);
     const runnerToBookingMs = Math.round(performance.now() - runnerStarted);
-    await guest.getByRole('heading', { name: 'Booking confirmed', exact: true }).waitFor();
     check(await guest.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth));
     await guest.screenshot({ path: resolve(artifactRoot, `cycle-${cycle}-booking.png`), fullPage: true });
     await guestContext.close();
