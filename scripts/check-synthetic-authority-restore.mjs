@@ -161,6 +161,10 @@ async function rehearse(registerActorCredential) {
     stage = 'restore into a separate empty database';
     checked(adminCommand('createdb', ['--template=template0', target]));
     ownsTarget = true;
+    // The scoped archive creates public with its original ownership and ACL.
+    // Remove only the empty template schema in the database we just created.
+    checked(adminCommand('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', '-d', target, '-c', 'drop schema public;']));
+
     stage = 'replay the logical backup';
     const restored = adminCommand('pg_restore', [
       '--verbose', '--single-transaction', '--exit-on-error', '-d', target, archive,

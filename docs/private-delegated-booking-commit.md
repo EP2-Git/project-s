@@ -119,9 +119,8 @@ The CI database job rehearses a synthetic logical backup with `pg_dump` and
 `pg_restore` in a separate database inside the same disposable PostgreSQL
 cluster. The archive includes scheduling, authority, identity data and their
 PostgreSQL dependencies. Storage, Realtime publications and other managed
-schemas are outside the rehearsal. The fixture advances the source after backup,
-then
-reserves a higher epoch outside the archive and installs it in the restore.
+schemas are outside the rehearsal. The fixture advances the source after backup
+and reserves the restored database's higher epoch outside the archive.
 Fresh worker processes use the real credential verifier with role-scoped SQL
 RPCs. They verify that both earlier generations are refused, a newly granted
 worker can book, and the restored booking and receipt stay intact. The
