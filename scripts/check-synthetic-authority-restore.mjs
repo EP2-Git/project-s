@@ -152,6 +152,7 @@ async function rehearse(registerActorCredential) {
     stage = 'restore into a separate empty database';
     checked(adminCommand('createdb', ['--template=template0', target]));
     ownsTarget = true;
+    stage = 'replay the logical backup';
     checked(adminCommand('pg_restore', ['--single-transaction', '--exit-on-error', '-d', target, archive]));
     assert.equal(epoch(target), '1');
     assert.equal(history(target), before);
@@ -197,7 +198,13 @@ async function main() {
   assert.equal(process.env.PROJECT_S_DISPOSABLE_AUTHORITY_TEST, '1');
   stage = 'verify the owned local stack';
   const doctor = await collectDoctor();
-  assert(doctor.ok && doctor.state.markerMatches);
+  if (!doctor.ok) {
+    const failed = doctor.checks.filter((check) => check.status === 'FAIL').map((check) => check.id);
+    console.error('Disposable stack checks failed: ' + failed.join(', '));
+  }
+  assert(doctor.ok);
+  stage = 'verify the bootstrap ownership marker';
+  assert(doctor.state.markerMatches);
   assert.match(doctor.state.dbId, /^[a-f0-9]{64}$/);
   docker = (args, input) => run('docker', ['exec', '-i', doctor.state.dbId, ...args], input);
   const authority = await import('../supabase/functions/_shared/actorCredentials.ts');

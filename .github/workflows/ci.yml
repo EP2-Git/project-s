@@ -136,10 +136,7 @@ jobs:
         timeout-minutes: 5
         env:
           PROJECT_S_DISPOSABLE_AUTHORITY_TEST: '1'
-        run: |
-          node node_modules/supabase/dist/supabase.js db reset --local --no-seed
-          node scripts/wait-for-local-db.mjs
-          node --experimental-strip-types scripts/check-synthetic-authority-restore.mjs
+        run: node --experimental-strip-types scripts/check-synthetic-authority-restore.mjs
       - name: Prove the receipt upgrade with an existing standing booking
         shell: bash
         timeout-minutes: 5
