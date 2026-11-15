@@ -153,7 +153,17 @@ async function rehearse(registerActorCredential) {
     checked(adminCommand('createdb', ['--template=template0', target]));
     ownsTarget = true;
     stage = 'replay the logical backup';
-    checked(adminCommand('pg_restore', ['--single-transaction', '--exit-on-error', '-d', target, archive]));
+    const restored = adminCommand('pg_restore', [
+      '--verbose', '--single-transaction', '--exit-on-error', '-d', target, archive,
+    ]);
+    if (restored.status !== 0) {
+      const diagnostics = restored.stderr ?? '';
+      const object = [...diagnostics.matchAll(/^pg_restore: (?:creating|processing data for) ([A-Z ]+ "[A-Za-z0-9_.-]+")\s*$/gm)].at(-1)?.[1];
+      const reason = /(?:ERROR:\s+|pg_restore: error: )((?:schema|extension|relation|role|function|table) "[A-Za-z0-9_.-]+" (?:already exists|does not exist)|(?:permission denied|could not access file|cannot create extension|can only create extension|must be superuser|can only create extension in database)[^.:\r\n]*)/.exec(diagnostics)?.[1];
+      console.error('PostgreSQL restore failed' + (object ? ' while restoring ' + object : '') + '.');
+      if (reason && /^[ A-Za-z0-9_."-]+$/.test(reason)) console.error('PostgreSQL diagnostic: ' + reason);
+    }
+    checked(restored);
     assert.equal(epoch(target), '1');
     assert.equal(history(target), before);
     assert.equal(sql(target, 'select count(*) from private.v2_booking_epoch_keys where epoch > 1;'), '0');
