@@ -5,14 +5,17 @@ set local search_path = pg_catalog;
 do $$
 begin
   if current_database() <> 'postgres'
-    or exists (select 1 from auth.users)
-    or exists (select 1 from public.bookings)
+    or exists (select 1 from auth.users
+      where id <> '10000000-0000-4000-8000-000000000001' or email <> 'demo@project-s.local')
+    or exists (select 1 from public.bookings
+      where id <> '30000000-0000-4000-8000-000000000001'
+        or user_id <> '10000000-0000-4000-8000-000000000001')
     or exists (select 1 from private.v2_authority_instance)
     or exists (select 1 from private.v2_authority_principals)
     or exists (select 1 from private.v2_booking_epoch_keys)
     or exists (select 1 from private.v2_booking_receipts)
   then
-    raise exception 'Recovery fixture requires a fresh, unseeded disposable source database';
+    raise exception 'Recovery fixture requires a disposable source containing only the standard demo seed';
   end if;
 end;
 $$;

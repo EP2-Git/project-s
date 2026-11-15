@@ -122,6 +122,8 @@ async function rehearse(registerActorCredential) {
         from private.v2_booking_receipts r where r.epoch = 1))::text)
     where (select count(*) from private.v2_booking_receipts where epoch = 1) = 1;`);
   const epoch = (database) => sql(database, 'select epoch from private.v2_authority_instance;');
+  const rehearsalBookings = (database) => sql(database,
+    "select count(*) from public.bookings where user_id = recovery_rehearsal.id('host');");
   const advance = (database, expected, next) => sql(database,
     'select private.v2_rotate_synthetic_authority_epoch(recovery_rehearsal.id(\'instance\'), ' + expected + ', ' + next + ');');
 
@@ -170,12 +172,12 @@ async function rehearse(registerActorCredential) {
     launchWorker(target, laterBinding, later, 'refused');
     launchWorker(target, replacementBinding, initial, 'refused');
     launchWorker(target, replacementBinding, later, 'refused');
-    assert.equal(sql(target, 'select count(*) from public.bookings;'), '1');
+    assert.equal(rehearsalBookings(target), '1');
 
     stage = 'explicitly reissue authority and verify a new booking';
     const replacement = await register(target, replacementBinding);
     launchWorker(target, replacementBinding, replacement, 'booked', 11);
-    assert.equal(sql(target, 'select count(*) from public.bookings;'), '2');
+    assert.equal(rehearsalBookings(target), '2');
     assert.equal(sql(target, 'select count(*) from private.v2_booking_receipts where epoch = 3;'), '1');
     assert.equal(history(target), before);
     assert.equal(history(source), before);
