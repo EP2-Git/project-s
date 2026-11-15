@@ -117,7 +117,8 @@ the epoch or select it from the snapshot alone.
 
 The CI database job rehearses a synthetic logical backup with `pg_dump` and
 `pg_restore` in a separate database inside the same disposable PostgreSQL
-cluster. The fixture advances the original database after the backup, then
+cluster. It excludes logical replication publications. Realtime is disabled
+in this stack. The fixture advances the original database after the backup, then
 reserves a higher epoch outside the archive and installs it in the restore.
 Fresh worker processes use the real credential verifier with role-scoped SQL
 RPCs. They verify that both earlier generations are refused, a newly granted

@@ -140,7 +140,9 @@ async function rehearse(registerActorCredential) {
     stage = 'create the logical backup';
     checked(docker(['mkdir', '-m', '700', directory]));
     ownsArchive = true;
-    checked(adminCommand('pg_dump', ['--format=custom', '--file', archive, source]));
+    // Realtime is disabled in the disposable stack. Its managed publication
+    // is outside the authority restore and needs a separate service rehearsal.
+    checked(adminCommand('pg_dump', ['--format=custom', '--no-publications', '--file', archive, source]));
 
     stage = 'issue authority after the backup';
     const lastIssuedEpoch = 2; // Operator record outside the archive.
