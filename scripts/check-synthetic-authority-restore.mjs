@@ -140,9 +140,16 @@ async function rehearse(registerActorCredential) {
     stage = 'create the logical backup';
     checked(docker(['mkdir', '-m', '700', directory]));
     ownsArchive = true;
-    // Realtime is disabled in the disposable stack. Its managed publication
-    // is outside the authority restore and needs a separate service rehearsal.
-    checked(adminCommand('pg_dump', ['--format=custom', '--no-publications', '--file', archive, source]));
+    // Archive the application and its identity data. The separately managed
+    // Storage and Realtime services are outside this authority rehearsal.
+    const schemas = ['auth', 'extensions', 'private', 'public', 'recovery_rehearsal', 'supabase_migrations'];
+    const extensions = ['btree_gist', 'pgcrypto', 'uuid-ossp'];
+    checked(adminCommand('pg_dump', [
+      '--format=custom', '--file', archive, '--no-publications',
+      ...schemas.map((name) => '--schema=' + name),
+      ...extensions.map((name) => '--extension=' + name),
+      source,
+    ]));
 
     stage = 'issue authority after the backup';
     const lastIssuedEpoch = 2; // Operator record outside the archive.
