@@ -113,14 +113,24 @@ After commit, configure replacement workers with the externally recorded
 epoch and verify that the old worker configuration is refused. Reissue only
 explicitly granted authority with fresh credentials. Preserve booking history
 when resolving any result whose original commit is uncertain. Never lower
-the epoch or select it from the snapshot alone. The database proof covers the
-epoch change under synthetic data. The worker stop and configuration boundary,
-a full snapshot restore and separate route enablement still require their own
-rehearsal and review.
+the epoch or select it from the snapshot alone.
+
+The CI database job rehearses a synthetic logical backup with `pg_dump` and
+`pg_restore` in a separate database inside the same disposable PostgreSQL
+cluster. The archive includes scheduling, authority, identity data and their
+PostgreSQL dependencies. Storage, Realtime publications and other managed
+schemas are outside the rehearsal. The fixture advances the source after backup
+and reserves the restored database's higher epoch outside the archive.
+Fresh worker processes use the real credential verifier with role-scoped SQL
+RPCs. They verify that both earlier generations are refused, a newly granted
+worker can book, and the restored booking and receipt stay intact. The
+archive is removed after the test. Worker shutdown and traffic cutover across
+a real deployment, restored Auth and HTTP services, and separate route
+enablement still require their own rehearsal and review.
 
 The implementation proof uses disposable PostgreSQL tests, a local-stack Auth
 and RPC rehearsal, and shared Node and Deno adapter vectors. Additional
-authority race cases, broader retention, a full restore rehearsal, the
+authority race cases, broader retention, real deployment recovery, the
 authorized interface, public transports and the separate enablement review
 remain open. Keep
 authority and receipt state when repairing a failure. Reverting an application
