@@ -67,6 +67,17 @@ $rotate$), 'DO', 'rotation succeeds in a separate transaction after the shared f
 select is((select verdict from dblink('recovery_worker', 'select pg_temp.check_generation(1)') as result(verdict text)),
   'PT503 AUTHORITY_BUSY', 'an older repeatable-read snapshot cannot validate the retired epoch');
 select is(dblink_exec('recovery_worker', 'rollback'), 'ROLLBACK', 'the worker drops the stale transaction');
+select is(dblink_exec('recovery_operator', 'begin'), 'BEGIN', 'the recovery operator opens a transaction');
+select is(dblink_exec('recovery_operator', $fence$
+  do $lock$ begin
+    perform 1 from private.v2_authority_recovery_fence where singleton for update;
+  end; $lock$;
+$fence$), 'DO', 'the recovery operator holds the exclusive recovery fence');
+select throws_ok($$select private.v2_redact_expired_booking_receipts_at_epoch(
+  'd01e5220-18ce-4077-8c36-956a59cdcbda', 2, 1, 'd01e5220-18ce-4077-8c36-956a59cdcbda', 10)$$,
+  'PT503', 'AUTHORITY_BUSY', 'retired retention refuses during the recovery transaction');
+select is(dblink_exec('recovery_operator', 'rollback'), 'ROLLBACK', 'the operator releases the recovery fence');
+
 select is((select verdict from dblink('recovery_worker', 'select pg_temp.check_generation(1)') as result(verdict text)),
   'PT401 AUTHENTICATION_REQUIRED', 'a fresh snapshot rejects the retired epoch');
 select is((select verdict from dblink('recovery_worker', 'select pg_temp.check_generation(2)') as result(verdict text)),
@@ -369,6 +380,78 @@ select ok((select jsonb_agg(to_jsonb(g) order by g.grant_id) from private.v2_ste
   'historical grant rows retain their evidence without regaining authority') from recovery_snapshot s;
 select is(public.get_public_booking_page_v1('recovery-synthetic-host'), s.public_page,
   'the host public booking page remains available') from recovery_snapshot s;
+
+select ok(not p.prosecdef, 'retention across epochs uses caller privileges')
+from pg_proc p where p.oid =
+  'private.v2_redact_expired_booking_receipts_at_epoch(uuid,bigint,bigint,uuid,integer)'::regprocedure;
+
+create function pg_temp.recovery_redact_receipts(p_epoch bigint, p_expected_epoch bigint default 20) returns integer
+language sql set search_path = pg_catalog as $$
+  select private.v2_redact_expired_booking_receipts_at_epoch(
+    pg_temp.recovery_id('instance'), p_expected_epoch, p_epoch, pg_temp.recovery_id('issuer'), 10);
+$$;
+
+select ok(not has_function_privilege(role_name,
+  'private.v2_redact_expired_booking_receipts_at_epoch(uuid,bigint,bigint,uuid,integer)', 'EXECUTE'),
+  role_name || ' cannot execute retention across epochs')
+from (values ('anon'), ('authenticated'), ('service_role')) roles(role_name);
+select ok(not exists (
+  select 1 from pg_proc p
+  cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+  where p.oid = 'private.v2_redact_expired_booking_receipts_at_epoch(uuid,bigint,bigint,uuid,integer)'::regprocedure
+    and acl.grantee = 0 and acl.privilege_type = 'EXECUTE'), 'PUBLIC cannot execute retention across epochs');
+
+select throws_ok($$select private.v2_redact_expired_booking_receipts_at_epoch(
+  pg_temp.recovery_id('other'), 20, 1, pg_temp.recovery_id('issuer'), 10)$$,
+  'PT401', 'AUTHENTICATION_REQUIRED', 'retention refuses a different instance');
+select throws_ok($$select pg_temp.recovery_redact_receipts(1, 1)$$,
+  'PT401', 'AUTHENTICATION_REQUIRED', 'retention refuses a stale expected active epoch');
+select throws_ok($$select private.v2_redact_expired_booking_receipts(
+  pg_temp.recovery_id('instance'), 1, pg_temp.recovery_id('issuer'), 10)$$,
+  'PT401', 'AUTHENTICATION_REQUIRED', 'the original cleanup function still refuses a retired epoch');
+select throws_ok(format('select pg_temp.recovery_redact_receipts(%L::bigint)', epoch),
+  'PT401', 'AUTHENTICATION_REQUIRED', description)
+from (values (19, 'retention refuses an unused historical epoch'),
+  (21, 'retention refuses a future epoch')) rejected(epoch, description);
+
+select is(pg_temp.recovery_redact_receipts(1), 0, 'a retired receipt still follows its expiry deadline');
+select is((select to_jsonb(r) from private.v2_booking_receipts r
+  where r.receipt_id = (s.receipt->>'receipt_id')::uuid), s.receipt, 'an unexpired retired receipt stays intact')
+from recovery_snapshot s;
+
+-- Move only the retired fixture receipt past its retention deadline.
+with expired as (
+  update private.v2_booking_receipts r
+  set committed_at = transaction_timestamp() - interval '25 hours',
+    expires_at = transaction_timestamp() - interval '1 hour'
+  from recovery_snapshot s
+  where r.receipt_id = (s.receipt->>'receipt_id')::uuid and r.epoch = 1
+  returning r.*
+)
+update recovery_snapshot s set receipt = to_jsonb(expired) from expired;
+
+select is(pg_temp.recovery_redact_receipts(1), 1, 'the owner redacts the expired retired receipt');
+select is(pg_temp.recovery_redact_receipts(1), 0, 'repeating retired receipt cleanup finds no work');
+select is((select to_jsonb(r) from private.v2_booking_receipts r
+  where r.receipt_id = (s.receipt->>'receipt_id')::uuid),
+  jsonb_set(s.receipt, '{booking}', 'null'), 'redaction preserves every other field of the retired receipt')
+from recovery_snapshot s;
+select is((select to_jsonb(b) from public.bookings b
+  where b.id = (s.booking->>'id')::uuid), s.booking, 'retired receipt cleanup preserves the booking exactly')
+from recovery_snapshot s;
+select is((select count(*)::integer from private.v2_authority_events e
+  where e.instance_id = pg_temp.recovery_id('instance') and e.action = 'expired_booking_receipts_redacted'), 1,
+  'only the nonempty cleanup appends an audit event');
+select is((select e.epoch from private.v2_authority_events e
+  where e.instance_id = pg_temp.recovery_id('instance') and e.principal_id = pg_temp.recovery_id('issuer')
+    and e.action = 'expired_booking_receipts_redacted'), 1::bigint, 'the event belongs to the retired issuer fence');
+select ok((select key from private.v2_booking_epoch_keys
+  where instance_id = pg_temp.recovery_id('instance') and epoch = 1) = s.prior_key,
+  'receipt cleanup preserves the retired epoch key') from recovery_snapshot s;
+select is(pg_temp.recovery_commit('new-committed', 20), (select receipt from recovery_cases where label = 'new-committed'),
+  'retired receipt cleanup leaves the current receipt and replay intact');
+select throws_ok($$select pg_temp.recovery_receipt('old-committed', 1)$$,
+  'PT401', 'AUTHENTICATION_REQUIRED', 'retired actor access stays denied after cleanup');
 
 select * from finish();
 rollback;

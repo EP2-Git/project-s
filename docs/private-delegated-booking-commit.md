@@ -104,10 +104,16 @@ snapshot cannot authenticate against the old epoch. A failed rotation leaves
 the epoch and keys intact. A successful rotation creates a
 fresh private retry key and changes the active epoch together. The database
 retains existing bookings, old keys and authority history. Old epoch requests
-are refused, including requests for earlier delegated receipts. The current
-cleanup functions also require the active epoch, so expired private payloads
-retained under a retired epoch still need a separate owner-only retention
-operation before enablement.
+are refused, including requests for earlier delegated receipts.
+
+The database owner can run
+`private.v2_redact_expired_booking_receipts_at_epoch(instance_id, expected_active_epoch, receipt_epoch, principal_id, limit)`
+to clear expired receipt payloads from a recorded retired epoch. The current
+epoch must match the operator's expected value. The existing deadline, batch
+limit and minimal audit event also apply to retired receipts. Cleanup removes
+only the receipt payload and preserves the booking, receipt identity, retry
+binding and epoch key. Review, preparation and other authority payloads still
+need their own retired-epoch cleanup before enablement.
 
 After commit, configure replacement workers with the externally recorded
 epoch and verify that the old worker configuration is refused. Reissue only
