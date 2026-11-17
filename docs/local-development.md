@@ -133,6 +133,13 @@ verification required by the checked-in local Auth configuration; its local
 mail inbox is `http://127.0.0.1:54324`. No external mail provider or hosted
 account is needed. Do not disable verification to bypass a failed signup.
 
+Opening a protected screen while signed out carries its destination through
+sign-in, signup and verification recovery. For example, opening
+`/profile-settings` returns to those settings after authentication. Returning
+destinations are limited to known local screens and the exact opaque issuer
+review reference. That issuer review screen still requires its separate
+transport and enablement work.
+
 The dashboard's **Booking setup** card checks saved profile/timezone, an active
 meeting type and saved weekly hours or an available date on/after today in the
 host's saved timezone. Its actions open the corresponding settings. Save edits

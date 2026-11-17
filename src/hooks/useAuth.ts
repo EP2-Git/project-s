@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 import { signOut as signOutService } from '@/services/profileService';
+import { authRoute, getAuthReturnTo } from '@/lib/auth';
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -22,13 +23,18 @@ export function useAuth() {
         setUser(nextUser);
 
         if (event === 'SIGNED_OUT') {
-          navigate('/login');
+          const location = window.location;
+          const onAuthScreen = ['/login', '/signup', '/email-verification'].includes(location.pathname);
+          const destination = onAuthScreen
+            ? getAuthReturnTo(location.search)
+            : location.pathname + location.search + location.hash;
+          navigate(authRoute('/login', destination), { replace: true });
         } else if (
           event === 'SIGNED_IN' &&
           nextUser &&
           (window.location.pathname === '/login' || window.location.pathname === '/signup')
         ) {
-          navigate('/dashboard');
+          navigate(getAuthReturnTo(window.location.search), { replace: true });
         }
       },
     );

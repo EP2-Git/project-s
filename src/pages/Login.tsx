@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,12 +8,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import Logo from '@/components/common/Logo';
+import { authRoute, getAuthReturnTo } from '@/lib/auth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = getAuthReturnTo(location.search);
 
   // Set dark mode as default
   useEffect(() => {
@@ -22,15 +25,17 @@ const Login = () => {
 
   // Check if user is already logged in
   useEffect(() => {
+    let active = true;
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        navigate('/dashboard');
+      if (active && data.session) {
+        navigate(returnTo, { replace: true });
       }
     };
 
     checkUser();
-  }, [navigate]);
+    return () => { active = false; };
+  }, [navigate, returnTo]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,14 +51,14 @@ const Login = () => {
         // Check if it's an email verification error
         if (error.message.includes('Email not confirmed')) {
           toast.error('Please verify your email address before logging in');
-          navigate('/email-verification', { state: { email: email.trim().toLowerCase() } });
+          navigate(authRoute('/email-verification', returnTo), { state: { email: email.trim().toLowerCase() } });
           return;
         }
         throw error;
       }
 
       toast.success('Logged in successfully');
-      navigate('/dashboard');
+      navigate(returnTo, { replace: true });
     } catch {
       toast.error('Unable to sign in. Check your credentials and try again.');
     } finally {
@@ -112,7 +117,7 @@ const Login = () => {
             <div className="text-center">
               <span className="text-foreground/70 text-sm">
                 Don't have an account?{' '}
-                <Link to="/signup" className="text-indigo-300 hover:underline">
+                <Link to={authRoute('/signup', returnTo)} className="text-indigo-300 hover:underline">
                   Sign up
                 </Link>
               </span>
