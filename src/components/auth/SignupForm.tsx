@@ -1,5 +1,7 @@
 
 import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { authRoute, getAuthReturnTo } from '@/lib/auth';
 import { useSignupForm } from '@/hooks/useSignupForm';
 import { Form } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +13,7 @@ import SubmitButton from './FormFields/SubmitButton';
 import ErrorAlert from './FormFields/ErrorAlert';
 
 const SignupForm = () => {
+  const location = useLocation();
   const {
     form,
     isLoading,
@@ -48,9 +51,9 @@ const SignupForm = () => {
       <CardFooter className="flex justify-center">
         <p className="text-sm text-center text-muted-foreground">
           Already have an account?{' '}
-          <a href="/login" className="text-indigo-300 underline underline-offset-4">
+          <Link to={authRoute('/login', getAuthReturnTo(location.search))} className="text-indigo-300 underline underline-offset-4">
             Sign in
-          </a>
+          </Link>
         </p>
       </CardFooter>
     </Card>

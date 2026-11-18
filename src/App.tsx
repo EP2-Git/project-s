@@ -4,11 +4,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from '@/hooks/useAuth';
 import { env } from '@/config/env';
 import { isHostedAudience, type DeploymentAudience } from '@/config/deploymentAudience';
 import NotFound from "./pages/NotFound";
+import { authRoute } from '@/lib/auth';
 
 // Keep this as a direct import.meta.env comparison so production bundlers can
 // remove the entire hosted website graph from a self-hosted build.
@@ -46,6 +47,7 @@ const queryClient = new QueryClient();
 
 export const PrivateRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
+  const location = useLocation();
 
   if (authLoading) {
     return (
@@ -56,7 +58,7 @@ export const PrivateRoute = ({ children }: { children: ReactNode }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={authRoute('/login', location.pathname + location.search + location.hash)} replace />;
   }
 
   return <>{children}</>;

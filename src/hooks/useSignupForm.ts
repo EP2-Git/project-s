@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
 import { isUsernameAvailable } from '@/services/usernameService';
-import { getPostSignupDestination } from '@/lib/auth';
+import { authRoute, getAuthReturnTo, getPostSignupDestination } from '@/lib/auth';
 import {
   signupFormSchema,
   signupUsernameSchema,
@@ -20,6 +20,8 @@ export function useSignupForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const submitting = useRef(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = getAuthReturnTo(location.search);
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupFormSchema),
@@ -97,7 +99,7 @@ export function useSignupForm() {
             full_name: values.fullName.trim(),
             username,
           },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}${returnTo === '/dashboard' ? '/dashboard' : authRoute('/login', returnTo)}`,
         },
       });
       if (error) throw error;
@@ -105,10 +107,10 @@ export function useSignupForm() {
       const destination = getPostSignupDestination(Boolean(data.session));
       if (destination === '/dashboard') {
         toast.success('Account created. You are signed in.');
-        navigate(destination);
+        navigate(returnTo, { replace: true });
       } else {
         toast.success('Account created. Your deployment requires email verification.');
-        navigate(destination, { state: { email: normalizedEmail } });
+        navigate(authRoute(destination, returnTo), { state: { email: normalizedEmail } });
       }
     } catch {
       setFormError('Failed to create account. Check your details and try again.');

@@ -9,11 +9,13 @@ import { supabase } from '@/lib/supabaseClient';
 import Logo from '@/components/common/Logo';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { authRoute, getAuthReturnTo } from '@/lib/auth';
 
 const EmailVerification = () => {
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const location = useLocation();
+  const returnTo = getAuthReturnTo(location.search);
   const [email, setEmail] = useState(
     typeof location.state?.email === 'string' ? location.state.email : '',
   );
@@ -44,7 +46,7 @@ const EmailVerification = () => {
         type: 'signup',
         email: email.trim().toLowerCase(),
         options: {
-          emailRedirectTo: window.location.origin + '/dashboard',
+          emailRedirectTo: window.location.origin + (returnTo === '/dashboard' ? '/dashboard' : authRoute('/login', returnTo)),
         }
       });
 
@@ -110,7 +112,7 @@ const EmailVerification = () => {
                 ? "Sending..."
                 : "Resend verification email"}
           </Button>
-          <Link to="/login" className="w-full">
+          <Link to={authRoute('/login', returnTo)} className="w-full">
             <Button
               className="w-full"
               variant="outline"
@@ -121,7 +123,7 @@ const EmailVerification = () => {
           </Link>
           <p className="text-sm text-center text-muted-foreground pt-2">
             Need help?{' '}
-            <Link to="/signup" className="text-lavender hover:underline">
+            <Link to={authRoute('/signup', returnTo)} className="text-lavender hover:underline">
               Try signing up again
             </Link>
           </p>
