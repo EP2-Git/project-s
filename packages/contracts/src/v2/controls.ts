@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 import { bookerNode, emailNode, ianaTimeZoneNode } from '../common.js';
-import { contractLiteral, contractNode, contractString, objectNode } from '../schema.js';
-import { v2MandateApproveInputNode, v2SuccessEnvelopeNode } from './operations.js';
+import { arrayNode, contractEnum, contractLiteral, contractNode, contractString, objectNode } from '../schema.js';
+import { v2MandateApproveInputNode, v2PreparedBookingSummaryNode, v2SuccessEnvelopeNode } from './operations.js';
 import {
+  v2DigestNode,
   v2InstantNode,
   v2InstantToEpochMicroseconds,
   v2RevisionNode,
@@ -101,6 +102,57 @@ export const v2MandateRevokedDataNode = objectNode({
 }, { title: 'V2MandateRevokedData' });
 export const v2MandateRevokedDataSchema = v2MandateRevokedDataNode.zod;
 
+const stepUpDifferenceNode = objectNode({
+  field: contractNode(contractEnum(['host', 'meeting_type', 'meeting_window', 'duration']), {
+    type: 'string', enum: ['host', 'meeting_type', 'meeting_window', 'duration'],
+  }),
+  proposed: contractNode(contractString({ minLength: 1 }), { type: 'string', minLength: 1 }),
+  reviewed: contractNode(contractString({ minLength: 1 }), { type: 'string', minLength: 1 }),
+});
+const stepUpBookerNode = objectNode({ name: reviewedNameNode, email: emailNode });
+// Split only the issuer-only fields, then reuse the complete snapshot parser so
+// its strictness, normalization and microsecond order refinement stay shared.
+const stepUpExactSummaryNode = contractNode(
+  z.unknown().transform((value, ctx) => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      ctx.addIssue({ code: 'custom', message: 'Invalid step-up booking snapshot.' });
+      return z.NEVER;
+    }
+    const { name, email, ...snapshot } = value as Record<string, unknown>;
+    const summary = v2PreparedBookingSummaryNode.zod.safeParse(snapshot);
+    const booker = stepUpBookerNode.zod.safeParse({ name, email });
+    if (!summary.success || !booker.success) {
+      ctx.addIssue({ code: 'custom', message: 'Invalid step-up booking snapshot.' });
+      return z.NEVER;
+    }
+    return { ...summary.data, ...booker.data };
+  }),
+  {
+    ...v2PreparedBookingSummaryNode.jsonSchema,
+    title: 'V2StepUpExactSummary',
+    description: 'Issuer-only recorded booking snapshot with reviewed name/email; never an actor response.',
+    properties: {
+      ...(v2PreparedBookingSummaryNode.jsonSchema.properties as Record<string, unknown>),
+      name: reviewedNameNode.jsonSchema,
+      email: emailNode.jsonSchema,
+    },
+    required: [...(v2PreparedBookingSummaryNode.jsonSchema.required as string[]), 'name', 'email'],
+  },
+);
+export const v2StepUpReviewDataNode = objectNode({
+  reviewId: v2UuidNode,
+  revision: contractNode(contractLiteral(1), { type: 'integer', const: 1 }),
+  state: contractNode(contractLiteral('pending'), { type: 'string', const: 'pending' }),
+  summaryDigest: v2DigestNode,
+  expiresAt: v2InstantNode,
+  exactSummary: stepUpExactSummaryNode,
+  differences: arrayNode(stepUpDifferenceNode, { minItems: 1, maxItems: 4 }),
+}, {
+  title: 'V2StepUpReviewData',
+  description: 'Principal-only pending review snapshot. Parsing verifies no caller, ownership, live state or authority.',
+});
+export const v2StepUpReviewDataSchema = v2StepUpReviewDataNode.zod;
+
 export const v2StepUpApproveInputNode = contractNode(v2MandateApproveInputNode.zod, {
   ...v2MandateApproveInputNode.jsonSchema,
   title: 'V2StepUpApproveInput',
@@ -140,6 +192,8 @@ export const v2BookerProfileDeletedResponseNode = v2SuccessEnvelopeNode(v2Booker
 export const v2BookerProfileDeletedResponseSchema = v2BookerProfileDeletedResponseNode.zod;
 export const v2MandateRevokedResponseNode = v2SuccessEnvelopeNode(v2MandateRevokedDataNode);
 export const v2MandateRevokedResponseSchema = v2MandateRevokedResponseNode.zod;
+export const v2StepUpReviewResponseNode = v2SuccessEnvelopeNode(v2StepUpReviewDataNode);
+export const v2StepUpReviewResponseSchema = v2StepUpReviewResponseNode.zod;
 export const v2StepUpApprovedResponseNode = v2SuccessEnvelopeNode(v2StepUpApprovedDataNode);
 export const v2StepUpApprovedResponseSchema = v2StepUpApprovedResponseNode.zod;
 export const v2StepUpRevokedResponseNode = v2SuccessEnvelopeNode(v2StepUpRevokedDataNode);
@@ -155,6 +209,8 @@ export type V2BookerProfileDeleteInput = z.infer<typeof v2BookerProfileDeleteInp
 export type V2BookerProfileDeletedData = z.infer<typeof v2BookerProfileDeletedDataSchema>;
 export type V2MandateRevokeInput = z.infer<typeof v2MandateRevokeInputSchema>;
 export type V2MandateRevokedData = z.infer<typeof v2MandateRevokedDataSchema>;
+export type V2StepUpReviewData = z.infer<typeof v2StepUpReviewDataSchema>;
+export type V2StepUpReviewResponse = z.infer<typeof v2StepUpReviewResponseSchema>;
 export type V2StepUpApproveInput = z.infer<typeof v2StepUpApproveInputSchema>;
 export type V2StepUpApprovedData = z.infer<typeof v2StepUpApprovedDataSchema>;
 export type V2StepUpRevokeInput = z.infer<typeof v2StepUpRevokeInputSchema>;

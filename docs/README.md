@@ -55,6 +55,9 @@ local data while evaluating it.
   booking or public controls are enabled.
 - [Private delegated preparation](private-delegated-preparations.md) — current
   actor, policy and scheduling validation and bounded pending step-up requests.
+- [Private step-up review HTTP foundation](private-step-up-review-http.md) —
+  authenticated owner-only review serialization and an unwired read handler;
+  no endpoint or approval screen is enabled.
 - [Private delegated booking commit](private-delegated-booking-commit.md) —
   standing-mandate commit, one-use budget and caller-bound receipt. Delegated
   routes and the approval interface still require enablement review.
