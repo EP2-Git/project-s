@@ -77,6 +77,10 @@ uses a shared one-booking budget for standing permission and exact approved
 exceptions. Broader race and cleanup/recovery proof and real controls remain
 required before delegated routes can be enabled.
 
+The [private step-up review HTTP foundation](docs/private-step-up-review-http.md)
+adds a strict owner-only review response and an unwired authenticated read
+handler. The issuer approval screen and served v2 transport remain required.
+
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 
 **Goal:** independently authorized guest-side and host-side agents coordinate one
