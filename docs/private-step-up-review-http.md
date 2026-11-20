@@ -24,8 +24,11 @@ the configured app origin; this handler grants no cross-origin access.
 The shared strict v2 response includes only the pending review's revision,
 digest, deadline, exact booking snapshot and allowlisted differences. Reviewed
 name and email are private owner-visible fields. Missing and foreign reviews
-retain the same `FORBIDDEN` refusal. An owned review that is no longer usable
-retains `VERSION_CONFLICT`; this increment does not invent terminal summaries.
+retain the same `FORBIDDEN` refusal. An owned review that fails the existing
+state, binding or deadline read checks retains `VERSION_CONFLICT`; this increment
+does not invent terminal summaries. The read does not prove the shared booking
+budget is unused or the slot is currently available; approval and commit
+revalidate those facts.
 Read access does not grant permission to approve, revoke or book.
 
 All success and error responses use `no-store`, `no-referrer` and `nosniff`.
