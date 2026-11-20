@@ -81,6 +81,10 @@ The [private step-up review HTTP foundation](docs/private-step-up-review-http.md
 adds a strict owner-only review response and an unwired authenticated read
 handler. The issuer approval screen and served v2 transport remain required.
 
+The proposed [booking approval experience](docs/rfcs/booking-approval-experience.md)
+sets out the status, decline and requester-display decisions needed for that
+screen. These additions require explicit review and are not accepted contracts.
+
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 
 **Goal:** independently authorized guest-side and host-side agents coordinate one

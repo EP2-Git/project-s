@@ -115,6 +115,9 @@ local data while evaluating it.
   specifies the credential, v2 contract, step-up, lock and synthetic retention
   choices. C1-C4 are accepted in [ADR 0004](adr/0004-bounded-mandate-implementation.md);
   implementation/proof and enablement remain gated. It does not reopen D1-D5.
+- [Booking approval experience](rfcs/booking-approval-experience.md) proposes
+  owner-visible status, exact decline scope and requester display. It requires
+  explicit design review before implementation; no screen or route is enabled.
 - [0.1.1 repository operations evidence](repository-evidence-0.1.1-prealpha.md)
   records the public draft, taxonomy, milestones, Issues, Discussions, and
   remaining manual gates.
