@@ -58,6 +58,9 @@ local data while evaluating it.
 - [Private step-up review HTTP foundation](private-step-up-review-http.md) —
   authenticated owner-only review serialization and an unwired read handler;
   no endpoint or approval screen is enabled.
+- [Private step-up action HTTP foundation](private-step-up-actions-http.md) —
+  separately constructed exact approve/revoke handlers and bounded input;
+  read access does not add controls or enable routes.
 - [Private delegated booking commit](private-delegated-booking-commit.md) —
   standing-mandate commit, one-use budget and caller-bound receipt. Delegated
   routes and the approval interface still require enablement review.
