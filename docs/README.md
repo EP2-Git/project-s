@@ -61,6 +61,9 @@ local data while evaluating it.
 - [Private step-up action HTTP foundation](private-step-up-actions-http.md) —
   separately constructed exact approve/revoke handlers and bounded input;
   read access does not add controls or enable routes.
+- [Pending approval review component](pending-step-up-review-ui.md) —
+  phone/keyboard review, exact action retry and a bounded private client;
+  component/fixture proof only, with the application route still unavailable.
 - [Private delegated booking commit](private-delegated-booking-commit.md) —
   standing-mandate commit, one-use budget and caller-bound receipt. Delegated
   routes and the approval interface still require enablement review.
