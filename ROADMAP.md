@@ -85,6 +85,11 @@ The [private step-up action HTTP foundation](docs/private-step-up-actions-http.m
 adds separately constructed exact approve/revoke handlers using the existing
 reviewed controls. No action endpoint or issuer interface is enabled.
 
+The [pending approval review component](docs/pending-step-up-review-ui.md) adds
+phone/keyboard review and exact action retry using those accepted contracts.
+Its synthetic browser fixture proves the component/client, not a served
+approval link; application routing and enablement remain unavailable.
+
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 
 **Goal:** independently authorized guest-side and host-side agents coordinate one
