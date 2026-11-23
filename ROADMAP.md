@@ -90,6 +90,11 @@ phone/keyboard review and exact action retry using those accepted contracts.
 Its synthetic browser fixture proves the component/client, not a served
 approval link; application routing and enablement remain unavailable.
 
+The [live step-up HTTP proof](docs/live-step-up-http-proof.md) joins that client
+to the existing factories, fresh local Auth and SQL through a disposable
+loopback listener. Browser account wiring, normal routing and explicit
+synthetic enablement remain required.
+
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 
 **Goal:** independently authorized guest-side and host-side agents coordinate one

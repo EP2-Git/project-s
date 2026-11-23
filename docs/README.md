@@ -64,6 +64,9 @@ local data while evaluating it.
 - [Pending approval review component](pending-step-up-review-ui.md) —
   phone/keyboard review, exact action retry and a bounded private client;
   component/fixture proof only, with the application route still unavailable.
+- [Live step-up HTTP proof](live-step-up-http-proof.md) — guarded disposable
+  client-to-HTTP-to-Auth/SQL integration, including response loss after approval;
+  no normal application route or synthetic enablement.
 - [Private delegated booking commit](private-delegated-booking-commit.md) —
   standing-mandate commit, one-use budget and caller-bound receipt. Delegated
   routes and the approval interface still require enablement review.

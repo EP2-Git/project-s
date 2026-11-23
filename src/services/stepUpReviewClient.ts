@@ -33,9 +33,14 @@ const messages: Record<ErrorKind, string> = {
 
 /** Fixed local copy only: never expose upstream problem text or diagnostics. */
 export class StepUpReviewClientError extends Error {
-  constructor(public readonly kind: ErrorKind, public readonly retryAfterSeconds?: number) {
+  readonly kind: ErrorKind;
+  readonly retryAfterSeconds?: number;
+
+  constructor(kind: ErrorKind, retryAfterSeconds?: number) {
     super(messages[kind]);
     this.name = 'StepUpReviewClientError';
+    this.kind = kind;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 

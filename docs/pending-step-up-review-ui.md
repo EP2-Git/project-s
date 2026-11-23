@@ -80,7 +80,9 @@ npx playwright test tests/e2e/step-up-review.spec.ts
 
 The fixture is not a production entry, a genuine signed-in approval link, live
 Auth/SQL proof or independent usability evaluation. The ordinary application
-route remains unavailable. Served Auth-to-HTTP wiring, separate reviewed
+route remains unavailable. A separate [live HTTP proof](live-step-up-http-proof.md)
+joins the actual client, private factories, fresh Auth and SQL in a disposable
+test listener. Browser account wiring, normal served routing, separate reviewed
 synthetic enablement, design acceptance and implementation of terminal
 reconciliation/requester visibility, agent continuation and a confirmed booking
 receipt remain necessary for the complete experience. Public-service/Cloud
