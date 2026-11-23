@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createClient } from '@supabase/supabase-js';
 import { collectDoctor, parseEnv } from './lib/local-setup.mjs';
+import { startStepUpHttpProof } from './lib/step-up-http-proof.mjs';
 
-// This proof owns only disposable, synthetic fixtures. It never enables a route,
+// This proof owns only disposable, synthetic fixtures. It never enables an app route,
 // resets a stack, accepts a remote endpoint or prints credentials/PII/SQL errors.
 let stage = 'explicit disposable-test authorization';
 const check = (condition) => {
@@ -88,6 +89,12 @@ async function main() {
   } = await import('../supabase/functions/_shared/mandateControls.ts');
   const { prepareDelegatedBooking, commitDelegatedBooking, readDelegatedBookingReceipt } =
     await import('../supabase/functions/_shared/delegatedPreparations.ts');
+  const { createStepUpReviewHandler } = await import('../supabase/functions/_shared/stepUpReviewHttp.ts');
+  const { createStepUpActionHandler } = await import('../supabase/functions/_shared/stepUpActionHttp.ts');
+  const { createStepUpReviewClient, StepUpReviewClientError, STEP_UP_REVIEW_RESPONSE_MAX_BYTES } =
+    await import('../src/services/stepUpReviewClient.ts');
+  const { readBoundedText } = await import('@project-s/contracts');
+  const { v2ProblemEnvelopeSchema } = await import('@project-s/contracts/v2');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
   const removeFixtureBookings = (ids, ownerClause) => `
     delete from public.bookings where user_id in (${ids}) and id in (
@@ -97,6 +104,41 @@ async function main() {
   const clients = [];
   let configured = false;
   let failed = false;
+  let httpProof;
+  let dropApprovalFor;
+  let droppedResponses = 0;
+  let httpAuthCalls = 0;
+  let httpRpcCalls = 0;
+  let httpPassed = 0;
+  const httpRecord = () => { httpPassed += 1; };
+  const httpRefusal = async (operation, kind) => {
+    let error;
+    try { await operation(); } catch (caught) { error = caught; }
+    check(error instanceof StepUpReviewClientError && error.kind === kind);
+    return { kind: error.kind, message: error.message };
+  };
+  const httpClient = (user) => createStepUpReviewClient({
+    baseUrl: httpProof.origin, accessToken: user.authorization.slice('Bearer '.length),
+  });
+  const httpProblem = async (reviewId, authorization, { method = 'GET', action = '', input, origin: requestOrigin } = {}) => {
+    const response = await fetch(`${httpProof.origin}/api/v2/authority/step-ups/${reviewId}${action}`, {
+      method, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(10_000),
+      headers: { authorization, ...(requestOrigin ? { origin: requestOrigin } : {}),
+        ...(input === undefined ? {} : { 'content-type': 'application/vnd.project-s.v2+json' }) },
+      ...(input === undefined ? {} : { body: JSON.stringify(input) }),
+    });
+    check(response.headers.get('content-type') === 'application/problem+json');
+    check(response.headers.get('cache-control') === 'no-store');
+    const text = await readBoundedText(response.body, STEP_UP_REVIEW_RESPONSE_MAX_BYTES, {
+      declaredLength: response.headers.get('content-length'), signal: AbortSignal.timeout(10_000),
+    });
+    const envelope = v2ProblemEnvelopeSchema.parse(JSON.parse(text));
+    check(envelope.error.status === response.status &&
+      !text.includes('booker@example.invalid') && !text.includes('Synthetic Booker') && !text.includes(authorization));
+    const problem = { ...envelope.error };
+    delete problem.requestId;
+    return problem;
+  };
   const profile = { name: '  Synthetic Booker  ', email: '  BOOKER@EXAMPLE.INVALID  ', guestTimeZone: 'America/Halifax' };
   let passed = 0;
   const record = () => { passed += 1; };
@@ -138,6 +180,32 @@ async function main() {
       and to_regprocedure('public.project_s_revoke_step_up_v2(jsonb,uuid,bigint)') is not null
       and to_regprocedure('public.project_s_commit_delegated_booking_v2(jsonb,uuid,uuid)') is not null
       and to_regprocedure('public.project_s_read_delegated_booking_receipt_v2(jsonb,uuid)') is not null)::text;`) === 'true');
+    stage = 'empty instance before opening the test-only loopback listener';
+    check(sql('select count(*) from private.v2_authority_instance;') === '0');
+    const httpOptions = {
+      binding,
+      auth: { getUser: (token) => { httpAuthCalls += 1; return server.auth.getUser(token); } },
+      rpc: (name, args) => { httpRpcCalls += 1; return rpc(name, args); },
+    };
+    const readHandler = createStepUpReviewHandler(httpOptions);
+    const actionHandler = createStepUpActionHandler(httpOptions);
+    httpProof = await startStepUpHttpProof({
+      handler: (request) => configured
+        ? (request.method === 'GET' ? readHandler(request) : actionHandler(request))
+        : new Response('Synthetic proof is not configured.', { status: 503 }),
+      dropResponse: (request, response) => {
+        if (dropApprovalFor && request.method === 'POST' && response.status === 200 &&
+            new URL(request.url).pathname === `/api/v2/authority/step-ups/${dropApprovalFor}/approve`) {
+          dropApprovalFor = undefined;
+          droppedResponses += 1;
+          return true;
+        }
+        return false;
+      },
+    });
+    // Select the synthetic audience once, before the locked empty-instance
+    // insert or any fixture context. Never change an established instance.
+    binding.audience = httpProof.origin;
     stage = 'empty synthetic instance configuration';
     sql(`begin; lock table private.v2_authority_instance in exclusive mode;
       do $$begin if exists(select 1 from private.v2_authority_instance) then
@@ -452,6 +520,63 @@ async function main() {
     check(JSON.stringify(exactReviewRetry) === JSON.stringify(exactReview));
     record();
 
+    stage = 'real owner client crosses HTTP and fresh Auth to the same SQL review';
+    const ownerClient = httpClient(a);
+    const otherClient = httpClient(b);
+    const beforeReadAuth = httpAuthCalls;
+    const beforeReadRpc = httpRpcCalls;
+    check(JSON.stringify(await ownerClient.getReview(reviewId)) === JSON.stringify(exactReview));
+    check(httpAuthCalls === beforeReadAuth + 1 && httpRpcCalls === beforeReadRpc + 1);
+    httpRecord();
+
+    stage = 'HTTP other-owner and missing review remain indistinguishable';
+    const foreignHttp = await httpProblem(reviewId, b.authorization);
+    const missingHttp = await httpProblem(randomUUID(), b.authorization);
+    check(foreignHttp.code === 'FORBIDDEN' && foreignHttp.status === 403 &&
+      JSON.stringify(foreignHttp) === JSON.stringify(missingHttp));
+    check(JSON.stringify(await httpRefusal(() => otherClient.getReview(reviewId), 'unavailable')) ===
+      JSON.stringify(await httpRefusal(() => otherClient.getReview(randomUUID()), 'unavailable')));
+    httpRecord();
+
+    stage = 'HTTP invalid and actor bearers cannot reach a principal RPC';
+    const beforeBadRpc = httpRpcCalls;
+    for (const token of ['synthetic-invalid-account-token', registered.credential]) {
+      const refusedClient = createStepUpReviewClient({ baseUrl: httpProof.origin, accessToken: token });
+      await httpRefusal(() => refusedClient.getReview(reviewId), 'authentication');
+      await httpRefusal(() => refusedClient.approve(reviewId,
+        { expectedRevision: 1, summaryDigest: exactReview.summaryDigest }), 'authentication');
+    }
+    check(httpRpcCalls === beforeBadRpc);
+    httpRecord();
+
+    stage = 'HTTP browser Origin and client context overrides fail before RPC';
+    const beforeOriginAuth = httpAuthCalls;
+    const beforeOriginRpc = httpRpcCalls;
+    const foreignOrigin = await httpProblem(reviewId, a.authorization, { origin: 'https://foreign.example.invalid' });
+    check(foreignOrigin.code === 'FORBIDDEN' && foreignOrigin.status === 403 &&
+      httpAuthCalls === beforeOriginAuth && httpRpcCalls === beforeOriginRpc);
+    const identityOverride = await httpProblem(reviewId, a.authorization, {
+      method: 'POST', action: '/approve', origin: binding.audience,
+      input: { expectedRevision: 1, summaryDigest: exactReview.summaryDigest, principalId: b.context.principalId },
+    });
+    check(identityOverride.code === 'VALIDATION_ERROR' && identityOverride.status === 400 && httpRpcCalls === beforeOriginRpc);
+    httpRecord();
+
+    stage = 'HTTP stale revision and digest are real SQL refusals without an approval';
+    const unchangedSequence = sql(`select event_sequence from private.v2_authority_principals
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`);
+    for (const input of [{ expectedRevision: 2, summaryDigest: exactReview.summaryDigest },
+      { expectedRevision: 1, summaryDigest: `${exactReview.summaryDigest[0] === '0' ? '1' : '0'}${exactReview.summaryDigest.slice(1)}` }]) {
+      const refused = await httpProblem(reviewId, a.authorization, {
+        method: 'POST', action: '/approve', origin: binding.audience, input,
+      });
+      check(refused.code === 'VERSION_CONFLICT' && refused.status === 409);
+    }
+    check(sql(`select event_sequence from private.v2_authority_principals
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`) === unchangedSequence);
+    check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(reviewId)};`) === '0');
+    httpRecord();
+
     stage = 'authenticated actor cannot read its principal exact review';
     calls = 0;
     await refusal(async () => getStepUpReview({ context: await reauthenticateActor(registered),
@@ -568,8 +693,25 @@ async function main() {
 
     stage = 'exact approval replaces the original mandate with one fresh bounded preparation';
     const stepUpApprovalStarted = Date.now();
-    const stepUpApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId,
-      input: stepUpApproval, binding, rpc });
+    dropApprovalFor = reviewId;
+    const beforeLostAuth = httpAuthCalls;
+    const beforeLostRpc = httpRpcCalls;
+    await httpRefusal(() => ownerClient.approve(reviewId, stepUpApproval), 'uncertain');
+    check(droppedResponses === 1 && dropApprovalFor === undefined &&
+      httpAuthCalls === beforeLostAuth + 1 && httpRpcCalls === beforeLostRpc + 1);
+    const committedApproval = JSON.parse(sql(`select jsonb_build_object('preparationId',p.preparation_id,
+      'expiresAt',private.v2_mandate_instant(p.expires_at))
+      from private.v2_step_up_grants g join private.v2_step_up_preparations p on p.grant_id=g.grant_id
+      where g.review_id=${literal(reviewId)} and g.instance_id=${literal(binding.instanceId)} and g.epoch=1
+      and g.principal_id=${literal(a.context.principalId)};`));
+    const lostSequence = sql(`select event_sequence from private.v2_authority_principals
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`);
+    const stepUpApproved = await ownerClient.approve(reviewId, stepUpApproval);
+    check(stepUpApproved.preparationId === committedApproval.preparationId && stepUpApproved.expiresAt === committedApproval.expiresAt);
+    check(httpAuthCalls === beforeLostAuth + 2 && httpRpcCalls === beforeLostRpc + 2);
+    check(sql(`select event_sequence from private.v2_authority_principals
+      where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`) === lostSequence);
+    httpRecord();
     check(Object.keys(stepUpApproved).sort().join(',') === 'expiresAt,preparationId,reviewId,state' &&
       stepUpApproved.reviewId === reviewId && stepUpApproved.state === 'approved' && uuid(stepUpApproved.preparationId) &&
       stepUpApproved.preparationId !== prepared.data.preparationId);
@@ -630,14 +772,15 @@ async function main() {
 
     stage = 'pending step-up revocation is idempotent and leaves original authority active';
     const linkedStepUp = await createPendingStepUp();
-    const pendingStepRevoke = await revokeStepUpReview({ context: await reauthenticate(a), reviewId: linkedStepUp.exact.reviewId,
-      input: { expectedRevision: 1 }, binding, rpc });
-    const pendingStepRevokeRetry = await revokeStepUpReview({ context: await reauthenticate(a), reviewId: linkedStepUp.exact.reviewId,
-      input: { expectedRevision: 1 }, binding, rpc });
+    const beforeDeclineAuth = httpAuthCalls;
+    const pendingStepRevoke = await ownerClient.decline(linkedStepUp.exact.reviewId, { expectedRevision: 1 });
+    const pendingStepRevokeRetry = await ownerClient.decline(linkedStepUp.exact.reviewId, { expectedRevision: 1 });
+    check(httpAuthCalls === beforeDeclineAuth + 2);
     check(pendingStepRevoke.state === 'revoked' && pendingStepRevoke.revision === 2 &&
       JSON.stringify(pendingStepRevoke) === JSON.stringify(pendingStepRevokeRetry));
     const pendingOriginal = await getMandate({ context: await reauthenticate(a), mandateId: linkedStepUp.mandate.mandateId, binding, rpc });
     check(pendingOriginal.state === 'active' && pendingOriginal.remainingUses === 1);
+    httpRecord();
     record();
 
     stage = 'revoking the original superseded mandate closes its unused replacement';
@@ -784,6 +927,13 @@ async function main() {
     await refusal(() => authenticatePrincipal({ authorization: b.authorization,
       requestId: 'profile-proof-deleted-auth', transport: 'http', binding, auth: b.browser.auth }),
     'AUTHENTICATION_REQUIRED', 401);
+    stage = 'HTTP re-verifies the deleted account instead of accepting its old bearer';
+    const beforeDeletedAuth = httpAuthCalls;
+    const beforeDeletedRpc = httpRpcCalls;
+    await httpRefusal(() => otherClient.getReview(reviewId), 'authentication');
+    await httpRefusal(() => otherClient.approve(reviewId, stepUpApproval), 'authentication');
+    check(httpAuthCalls === beforeDeletedAuth + 2 && httpRpcCalls === beforeDeletedRpc);
+    httpRecord();
     record();
 
     stage = 'minimal sequenced audit contains no profile fields';
@@ -805,9 +955,20 @@ async function main() {
   } catch {
     failed = true;
   } finally {
-    const previousStage = stage;
+    let previousStage = stage;
+    let httpQuiescent = true;
+    stage = 'test-only loopback listener shutdown';
+    try { await httpProof?.close(); } catch {
+      httpQuiescent = false;
+      if (!failed) previousStage = stage;
+      failed = true;
+    }
     stage = 'owned synthetic fixture cleanup';
     try {
+      // A failed drain cannot prove that SQL-backed handlers stopped. Do not
+      // race fixture deletion against one; fail and leave the guarded owned
+      // instance for disposable-stack teardown rather than resetting any data.
+      check(httpQuiescent);
       if (configured) {
         const ids = users.map(literal).join(',');
         const ownerClause = ids ? `principal_id in (${ids})` : 'false';
@@ -831,14 +992,17 @@ async function main() {
           commit;`);
         check(sql(`select count(*) from private.v2_authority_instance where instance_id=${literal(binding.instanceId)};`) === '0');
       }
-      for (const browser of clients) browser.auth.stopAutoRefresh();
       if (failed) stage = previousStage;
     } catch {
       failed = true;
+      if (!httpQuiescent) stage = previousStage;
+    } finally {
+      for (const browser of clients) browser.auth.stopAutoRefresh();
     }
   }
   check(!failed);
-  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up commit: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; routes remain disabled.`);
+  console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up commit: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; application routes remain disabled.`);
+  console.log(`Step-up client to loopback HTTP, real Auth and SQL: ${httpPassed} integration checks passed; listener closed; no application route enabled.`);
 }
 
 try { await main(); }
