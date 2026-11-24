@@ -110,6 +110,7 @@ async function main() {
   let browserAssets;
   let browserProof;
   let browserPassed = 0;
+  let browserSignedOut = false;
   let dropApprovalFor;
   let droppedResponses = 0;
   let httpAuthCalls = 0;
@@ -1009,6 +1010,15 @@ async function main() {
     httpRecord();
     record();
 
+    if (browserProof) {
+      // Actual global sign-out ends the principal's account session. Run it
+      // only after every original fresh-Auth/direct-RPC check, rather than
+      // silently issuing a replacement token or weakening those assertions.
+      stage = 'real browser sign-out clears its retained private review';
+      await browserProof.verifySignOut();
+      browserSignedOut = true;
+    }
+
     stage = 'minimal sequenced audit contains no profile fields';
     check(sql(`select count(*) from private.v2_authority_events e where instance_id=${literal(binding.instanceId)}
       and epoch=1 and to_jsonb(e) ?| array['name','email','guestTimeZone','guest_time_zone','profile_id','credential','token'];`) === '0');
@@ -1081,7 +1091,7 @@ async function main() {
     }
   }
   check(!failed);
-  if (browserRequested) check(browserPassed === 3);
+  if (browserRequested) check(browserPassed === 3 && browserSignedOut);
   console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up commit: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; application routes remain disabled.`);
   console.log(`Step-up client to loopback HTTP, real Auth and SQL: ${httpPassed} integration checks passed; listener closed; no application route enabled.`);
   if (browserRequested) {

@@ -19,7 +19,7 @@ const stages = new Set([
   'foreign review heading', 'foreign private state denial', 'foreign booking denial',
   'foreign accessibility', 'foreign sanitized capture', 'lost approval login', 'lost approval pending fields',
   'lost approval submit', 'lost approval uncertainty', 'same approval retry',
-  'approval acknowledgement', 'approval reload recovery', 'approval sign-out',
+  'approval acknowledgement', 'approval reload recovery',
   'desktop decline login', 'desktop decline pending fields', 'desktop decline submit',
   'decline acknowledgement', 'browser context shutdown', 'browser shutdown',
 ]);
@@ -235,44 +235,75 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
     await expect(page.getByRole('heading', { name: 'Welcome back', exact: true })).toBeVisible();
     await expect(page.getByLabel('Password', { exact: true })).toHaveValue('');
   };
+  let signOutReview;
 
   return {
     inspectPending: (input) => safe(async () => {
       const { reviewId, exactReview } = validate(input);
-      await inContext(phone, async (page) => {
-        report('phone signed-out review');
-        const observed = observe(page, reviewId);
-        await page.goto(`${base}${reviewPath(reviewId)}`);
-        await expect(page.getByRole('heading', { name: 'Sign in to review this request', exact: true })).toBeVisible();
-        await noPrivateDetails(page, exactReview);
-        observed.assert([]);
-        report('phone login');
-        await signIn(page, reviewId, owner);
-        report('phone pending fields');
-        await pending(page, exactReview);
-        observed.assert([observed.read]);
-        report('phone accessibility');
-        await accessible(page);
-        report('phone sanitized capture');
-        await capture(page, 'phone-pending');
-        report('phone sign-out');
-        await signOut(page, reviewId, exactReview);
-        observed.assert([observed.read]);
-      });
-      await inContext(phone, async (page) => {
-        report('foreign login');
-        await signIn(page, reviewId, other);
-        report('foreign review heading');
-        await expect(page.getByRole('heading', { name: 'This request is no longer available', exact: true })).toBeVisible();
-        report('foreign private state denial');
-        await noPrivateDetails(page, exactReview);
-        report('foreign booking denial');
-        await notBooked(page);
-        report('foreign accessibility');
-        await accessible(page);
-        report('foreign sanitized capture');
-        await capture(page, 'foreign-unavailable');
-      });
+      check(!signOutReview);
+      const { context, page } = await createPage(phone);
+      const observed = observe(page, reviewId);
+      let failedStage;
+      try {
+        await bounded((async () => {
+          report('phone signed-out review');
+          await page.goto(`${base}${reviewPath(reviewId)}`);
+          await expect(page.getByRole('heading', { name: 'Sign in to review this request', exact: true })).toBeVisible();
+          await noPrivateDetails(page, exactReview);
+          observed.assert([]);
+          report('phone login');
+          await signIn(page, reviewId, owner);
+          report('phone pending fields');
+          await pending(page, exactReview);
+          observed.assert([observed.read]);
+          report('phone accessibility');
+          await accessible(page);
+          report('phone sanitized capture');
+          await capture(page, 'phone-pending');
+        })(), operationDeadline);
+        await inContext(phone, async (page) => {
+          report('foreign login');
+          await signIn(page, reviewId, other);
+          report('foreign review heading');
+          await expect(page.getByRole('heading', { name: 'This request is no longer available', exact: true })).toBeVisible();
+          report('foreign private state denial');
+          await noPrivateDetails(page, exactReview);
+          report('foreign booking denial');
+          await notBooked(page);
+          report('foreign accessibility');
+          await accessible(page);
+          report('foreign sanitized capture');
+          await capture(page, 'foreign-unavailable');
+        });
+        // Keep this original private snapshot solely to prove clearing on real
+        // logout. Native changes later in the proof can make it stale; it is
+        // never treated as a fresh or still-actionable pending request.
+        signOutReview = { context, page, reviewId, exactReview, observed };
+      } catch { failedStage = currentStage; }
+      if (failedStage) {
+        try { await closeContext(context); }
+        catch { report('browser context shutdown'); throw new Error(failure); }
+        report(failedStage);
+        throw new Error(failure);
+      }
+    }),
+    verifySignOut: () => safe(async () => {
+      check(!closing && signOutReview);
+      const retained = signOutReview;
+      signOutReview = undefined;
+      let failedStage;
+      try {
+        await bounded((async () => {
+          report('phone sign-out');
+          await signOut(retained.page, retained.reviewId, retained.exactReview);
+          retained.observed.assert([retained.observed.read]);
+        })(), operationDeadline);
+      } catch { failedStage = currentStage; }
+      finally {
+        try { await closeContext(retained.context); }
+        catch { failedStage = 'browser context shutdown'; }
+      }
+      if (failedStage) { report(failedStage); throw new Error(failure); }
     }),
     decline: (input) => safe(async () => {
       const { reviewId, exactReview } = validate(input);
@@ -367,8 +398,6 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
             observed.assert([observed.read, observed.approve(exactReview), observed.approve(exactReview), observed.read]);
             await accessible(page);
             await capture(page, 'approval-reload-unavailable');
-            report('approval sign-out');
-            await signOut(page, reviewId, exactReview);
           });
           await abandon();
         }),

@@ -90,7 +90,7 @@ The listener still refuses requests until the instance is locked/configured.
 
 The phone journey starts signed out at an opaque review link, uses the ordinary
 password sign-in form, returns to that exact request, and displays details from
-the verified pending response. Sign-out clears private details. A separate real
+the verified pending response. A separate real
 account cannot see them. The desktop journey declines a different pending
 request through focused keyboard controls; SQL checks that the original
 permission remains valid and no replacement grant was created.
@@ -110,6 +110,13 @@ evaluation. Accessibility scans wait for actual finite UI animations to finish,
 then check the whole page, including the sign-in toast; no rules or elements are
 excluded. Browser contexts close before listener quiescence and owned SQL
 cleanup. An uncertain shutdown withholds cleanup and fails the proof.
+
+The original loaded phone page is retained only for the final private-state
+clearing check; it is not treated as a fresh or usable review after later
+backend changes. Its real global sign-out runs after all original authenticated
+RPC checks, then removes those details and returns to sign-in. This deliberately
+orders the destructive session boundary last; it does not replace account
+tokens, change logout scope or weaken fresh verification/direct-RPC denials.
 
 ## Remaining product gates
 
