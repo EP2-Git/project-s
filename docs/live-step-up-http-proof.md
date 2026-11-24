@@ -65,10 +65,63 @@ npm run build:packages
 node --test tests/setup/step-up-http-proof.test.mjs tests/setup/step-up-client-runtime.test.mjs
 ```
 
+## Disposable browser journey
+
+The optional `--browser` proof joins the existing `Login`, `useAuth`, safe auth
+return helpers and `StepUpReview` to the same real Auth/HTTP/SQL boundary:
+
+```sh
+PROJECT_S_DISPOSABLE_AUTHORITY_TEST=1 npm run test:authority:live -- --browser
+```
+
+Use an already bootstrapped, verified disposable local stack and install Chromium
+with `npx playwright install --with-deps chromium`. The environment assignment
+above uses POSIX shell syntax; in PowerShell set
+`$env:PROJECT_S_DISPOSABLE_AUTHORITY_TEST = '1'` before running the npm command.
+All the existing ownership, schema and empty-instance guards still apply. The
+database CI job runs this variant; it does not substitute for any earlier check.
+
+After those guards, a separate test-only Vite entry is built in memory with only
+the exact local Auth URL and anonymous public key. It imports the actual screens,
+not the normal App router, and exposes only its built assets and fixture review
+and login pages on the ephemeral loopback listener. There is no disk bundle,
+dev server, CORS workaround, normal route change or configurable deployment.
+The listener still refuses requests until the instance is locked/configured.
+
+The phone journey starts signed out at an opaque review link, uses the ordinary
+password sign-in form, returns to that exact request, and displays details from
+the verified pending response. A separate real
+account cannot see them. The desktop journey declines a different pending
+request through focused keyboard controls; SQL checks that the original
+permission remains valid and no replacement grant was created.
+
+A later browser approval deliberately loses its successful response after SQL
+commit. The same mounted screen retries the exact action without a GET preflight.
+Independent SQL reads verify the original preparation/deadline, one grant and an
+unchanged event sequence. The UI acknowledges permission, never a booking. A
+reload uses neutral unavailable recovery rather than inferring a terminal state.
+Existing fixture/audit totals and subsequent direct-adapter checks still apply.
+
+The browser driver uses real normal sign-in, not injected tokens, storage state
+or mocked HTTP. It never records traces, HAR, Auth headers or password forms.
+Axe, responsive bounds, keyboard behavior and screenshots of synthetic review
+states provide agent-run evidence; screenshots are not independent usability
+evaluation. Accessibility scans wait for actual finite UI animations to finish,
+then check the whole page, including the sign-in toast; no rules or elements are
+excluded. Browser contexts close before listener quiescence and owned SQL
+cleanup. An uncertain shutdown withholds cleanup and fails the proof.
+
+The original loaded phone page is retained only for the final private-state
+clearing check; it is not treated as a fresh or usable review after later
+backend changes. Its real global sign-out runs after all original authenticated
+RPC checks, then removes those details and returns to sign-in. This deliberately
+orders the destructive session boundary last; it does not replace account
+tokens, change logout scope or weaken fresh verification/direct-RPC denials.
+
 ## Remaining product gates
 
-Native HTTP integration does not prove browser account/CORS wiring, independent
-usability, a runnable approval link or host/guest bilateral authorization. The
+Disposable browser integration does not establish independent usability, a
+generally available approval link or host/guest bilateral authorization. The
 ordinary `/authority/review` route remains unavailable. The proposed terminal
 status/requester display design, explicit synthetic enablement review, actor
 continuation and confirmed booking receipt remain separate. Calendar,

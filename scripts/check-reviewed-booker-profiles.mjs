@@ -35,6 +35,8 @@ const waitForPermission = async (notBefore) => {
 
 async function main() {
   check(process.env.PROJECT_S_DISPOSABLE_AUTHORITY_TEST === '1');
+  const browserRequested = process.argv.length === 3 && process.argv[2] === '--browser';
+  check(process.argv.length === 2 || browserRequested);
   stage = 'owned local stack doctor';
   const doctor = await collectDoctor();
   if (!doctor.ok) {
@@ -105,6 +107,10 @@ async function main() {
   let configured = false;
   let failed = false;
   let httpProof;
+  let browserAssets;
+  let browserProof;
+  let browserPassed = 0;
+  let browserSignedOut = false;
   let dropApprovalFor;
   let droppedResponses = 0;
   let httpAuthCalls = 0;
@@ -150,8 +156,9 @@ async function main() {
     const browser = client(values.ANON_KEY);
     clients.push(browser);
     const suffix = randomUUID().replaceAll('-', '');
+    const account = { email: `profile-proof-${suffix}@example.invalid`, password: `Synthetic-${randomUUID()}-aA1!` };
     const signed = await browser.auth.signUp({
-      email: `profile-proof-${suffix}@example.invalid`, password: `Synthetic-${randomUUID()}-aA1!`,
+      ...account,
       options: { data: { username: `pp-${suffix.slice(0, 20)}`, full_name: 'Synthetic authority principal', timezone: 'UTC' } },
     });
     // Register a successfully created user for cleanup even if no session was returned.
@@ -161,7 +168,7 @@ async function main() {
     const context = await authenticatePrincipal({ authorization, requestId: `profile-proof-${randomUUID()}`,
       transport: 'http', binding, auth: browser.auth });
     check(context.principalId === signed.data.user.id && context.subjectId === signed.data.user.id);
-    return { browser, authorization, context };
+    return { browser, authorization, context, account };
   };
   try {
     stage = 'required private preparation, step-up and receipt schema';
@@ -182,6 +189,13 @@ async function main() {
       and to_regprocedure('public.project_s_read_delegated_booking_receipt_v2(jsonb,uuid)') is not null)::text;`) === 'true');
     stage = 'empty instance before opening the test-only loopback listener';
     check(sql('select count(*) from private.v2_authority_instance;') === '0');
+    if (browserRequested) {
+      stage = 'guarded in-memory browser fixture build';
+      const { buildStepUpBrowserAssets } = await import('./lib/step-up-browser-assets.mjs');
+      browserAssets = await buildStepUpBrowserAssets({
+        supabaseUrl: origin.origin, supabasePublishableKey: values.ANON_KEY,
+      });
+    }
     const httpOptions = {
       binding,
       auth: { getUser: (token) => { httpAuthCalls += 1; return server.auth.getUser(token); } },
@@ -190,9 +204,11 @@ async function main() {
     const readHandler = createStepUpReviewHandler(httpOptions);
     const actionHandler = createStepUpActionHandler(httpOptions);
     httpProof = await startStepUpHttpProof({
-      handler: (request) => configured
-        ? (request.method === 'GET' ? readHandler(request) : actionHandler(request))
-        : new Response('Synthetic proof is not configured.', { status: 503 }),
+      handler: (request) => {
+        if (!configured) return new Response('Synthetic proof is not configured.', { status: 503 });
+        return browserAssets?.handle(request) ??
+          (request.method === 'GET' ? readHandler(request) : actionHandler(request));
+      },
       dropResponse: (request, response) => {
         if (dropApprovalFor && request.method === 'POST' && response.status === 200 &&
             new URL(request.url).pathname === `/api/v2/authority/step-ups/${dropApprovalFor}/approve`) {
@@ -577,6 +593,21 @@ async function main() {
     check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(reviewId)};`) === '0');
     httpRecord();
 
+    if (browserRequested) {
+      stage = 'real phone sign-in returns to the same pending review and isolates another account';
+      const { startStepUpBrowserProof } = await import('./lib/step-up-browser-proof.mjs');
+      browserProof = await startStepUpBrowserProof({
+        origin: httpProof.origin, owner: a.account, other: b.account,
+        onStage: (label) => { stage = `real browser ${label}`; },
+      });
+      await browserProof.inspectPending({ reviewId, exactReview });
+      // Navigation, authentication and review never approve a request.
+      check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(reviewId)};`) === '0');
+      check(sql(`select event_sequence from private.v2_authority_principals
+        where instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)};`) === unchangedSequence);
+      browserPassed += 1;
+    }
+
     stage = 'authenticated actor cannot read its principal exact review';
     calls = 0;
     await refusal(async () => getStepUpReview({ context: await reauthenticateActor(registered),
@@ -772,6 +803,14 @@ async function main() {
 
     stage = 'pending step-up revocation is idempotent and leaves original authority active';
     const linkedStepUp = await createPendingStepUp();
+    if (browserProof) {
+      stage = 'real desktop keyboard declines the exact pending request';
+      await browserProof.decline({ reviewId: linkedStepUp.exact.reviewId, exactReview: linkedStepUp.exact });
+      check(sql(`select count(*) from private.v2_step_up_requests
+        where review_id=${literal(linkedStepUp.exact.reviewId)} and state='revoked' and revision=2;`) === '1');
+      check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(linkedStepUp.exact.reviewId)};`) === '0');
+      browserPassed += 1;
+    }
     const beforeDeclineAuth = httpAuthCalls;
     const pendingStepRevoke = await ownerClient.decline(linkedStepUp.exact.reviewId, { expectedRevision: 1 });
     const pendingStepRevokeRetry = await ownerClient.decline(linkedStepUp.exact.reviewId, { expectedRevision: 1 });
@@ -803,8 +842,43 @@ async function main() {
 
     stage = 'a distinct approved replacement remains live for profile-dependent deletion proof';
     const deletionStepUp = await createPendingStepUp();
+    let browserOriginalApproval;
+    if (browserProof) {
+      stage = 'real browser approval commits before its response is lost';
+      dropApprovalFor = deletionStepUp.exact.reviewId;
+      const beforeBrowserDrop = droppedResponses;
+      const attempt = await browserProof.approveLost({
+        reviewId: deletionStepUp.exact.reviewId, exactReview: deletionStepUp.exact,
+      });
+      check(droppedResponses === beforeBrowserDrop + 1 && dropApprovalFor === undefined);
+      const beforeRetry = sql(`select jsonb_build_object('preparationId',p.preparation_id,
+        'expiresAt',private.v2_mandate_instant(p.expires_at),'sequence',a.event_sequence)::text
+        from private.v2_step_up_grants g join private.v2_step_up_preparations p on p.grant_id=g.grant_id
+        join private.v2_authority_principals a
+          on (a.instance_id,a.epoch,a.principal_id)=(g.instance_id,g.epoch,g.principal_id)
+        where g.review_id=${literal(deletionStepUp.exact.reviewId)} and g.state='active';`);
+      check(beforeRetry.length > 0);
+      browserOriginalApproval = JSON.parse(beforeRetry);
+      stage = 'same mounted browser retries without another grant or event';
+      await attempt.retryApproval();
+      const afterRetry = sql(`select jsonb_build_object('preparationId',p.preparation_id,
+        'expiresAt',private.v2_mandate_instant(p.expires_at),'sequence',a.event_sequence)::text
+        from private.v2_step_up_grants g join private.v2_step_up_preparations p on p.grant_id=g.grant_id
+        join private.v2_authority_principals a
+          on (a.instance_id,a.epoch,a.principal_id)=(g.instance_id,g.epoch,g.principal_id)
+        where g.review_id=${literal(deletionStepUp.exact.reviewId)} and g.state='active';`);
+      check(afterRetry === beforeRetry && sql(`select count(*) from private.v2_step_up_grants
+        where review_id=${literal(deletionStepUp.exact.reviewId)};`) === '1');
+      check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
+      await attempt.finish();
+      browserPassed += 1;
+    }
     const deletionApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId: deletionStepUp.exact.reviewId,
       input: { expectedRevision: deletionStepUp.exact.revision, summaryDigest: deletionStepUp.exact.summaryDigest }, binding, rpc });
+    if (browserOriginalApproval) {
+      check(deletionApproved.preparationId === browserOriginalApproval.preparationId &&
+        deletionApproved.expiresAt === browserOriginalApproval.expiresAt);
+    }
     check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(deletionStepUp.exact.reviewId)}
       and instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)} and state='active';`) === '1');
     check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
@@ -936,6 +1010,15 @@ async function main() {
     httpRecord();
     record();
 
+    if (browserProof) {
+      // Actual global sign-out ends the principal's account session. Run it
+      // only after every original fresh-Auth/direct-RPC check, rather than
+      // silently issuing a replacement token or weakening those assertions.
+      stage = 'real browser sign-out clears its retained private review';
+      await browserProof.verifySignOut();
+      browserSignedOut = true;
+    }
+
     stage = 'minimal sequenced audit contains no profile fields';
     check(sql(`select count(*) from private.v2_authority_events e where instance_id=${literal(binding.instanceId)}
       and epoch=1 and to_jsonb(e) ?| array['name','email','guestTimeZone','guest_time_zone','profile_id','credential','token'];`) === '0');
@@ -957,6 +1040,12 @@ async function main() {
   } finally {
     let previousStage = stage;
     let httpQuiescent = true;
+    stage = 'real browser shutdown before listener or fixture cleanup';
+    try { await browserProof?.close(); } catch {
+      httpQuiescent = false;
+      if (!failed) previousStage = stage;
+      failed = true;
+    }
     stage = 'test-only loopback listener shutdown';
     try { await httpProof?.close(); } catch {
       httpQuiescent = false;
@@ -998,11 +1087,16 @@ async function main() {
       if (!httpQuiescent) stage = previousStage;
     } finally {
       for (const browser of clients) browser.auth.stopAutoRefresh();
+      await browserAssets?.close();
     }
   }
   check(!failed);
+  if (browserRequested) check(browserPassed === 3 && browserSignedOut);
   console.log(`Reviewed profiles, mandate controls, delegated preparations and exact step-up commit: ${passed} live Auth/RPC checks passed; synthetic fixtures removed; application routes remain disabled.`);
   console.log(`Step-up client to loopback HTTP, real Auth and SQL: ${httpPassed} integration checks passed; listener closed; no application route enabled.`);
+  if (browserRequested) {
+    console.log(`Step-up browser, normal sign-in, HTTP, Auth and SQL: ${browserPassed} journey groups passed; owned fixtures removed; no application route enabled.`);
+  }
 }
 
 try { await main(); }
