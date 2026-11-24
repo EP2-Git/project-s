@@ -93,7 +93,10 @@ approval link; application routing and enablement remain unavailable.
 The [live step-up HTTP proof](docs/live-step-up-http-proof.md) joins that client
 to the existing factories, fresh local Auth and SQL through a disposable
 loopback listener. Browser account wiring, normal routing and explicit
-synthetic enablement remain required.
+synthetic enablement remain required for the ordinary application. Its optional
+disposable browser proof joins actual sign-in, auth return and review screens,
+phone/keyboard use and exact retry to that same private boundary without enabling
+normal routes. Independent usability evaluation remains open.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 

@@ -127,10 +127,20 @@ jobs:
         run: npm run bootstrap -- --skip-install
       - name: Prove existing data refusal and reuse preservation
         run: node scripts/check-local-bootstrap.mjs
-      - name: Prove real Auth-to-RPC authority controls and delegated preparation
-        run: npm run test:authority:live
+      - name: Install Chromium for the guarded real-sign-in approval proof
+        run: npx playwright install --with-deps chromium
+      - name: Prove real approval browser, Auth, HTTP, SQL and delegated preparation
+        run: npm run test:authority:live -- --browser
         env:
           PROJECT_S_DISPOSABLE_AUTHORITY_TEST: '1'
+      - name: Upload synthetic approval browser screenshots
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: live-step-up-browser-synthetic-identities
+          path: output/playwright/live-step-up-*.png
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Rehearse a synthetic database restore and worker replacement
         shell: bash
         timeout-minutes: 5
