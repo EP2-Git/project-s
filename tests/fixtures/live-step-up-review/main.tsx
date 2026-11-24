@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
 import { v2UuidSchema } from '@project-s/contracts/v2';
 import { Button } from '@/components/ui/button';
 import StepUpReview from '@/features/step-up-review/StepUpReview';
