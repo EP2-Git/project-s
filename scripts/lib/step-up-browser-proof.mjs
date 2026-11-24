@@ -16,7 +16,8 @@ const differenceLabels = {
 const stages = new Set([
   'browser launch', 'phone signed-out review', 'phone login', 'phone pending fields',
   'phone accessibility', 'phone sanitized capture', 'phone sign-out', 'foreign login',
-  'foreign review refusal', 'lost approval login', 'lost approval pending fields',
+  'foreign review heading', 'foreign private state denial', 'foreign booking denial',
+  'foreign accessibility', 'foreign sanitized capture', 'lost approval login', 'lost approval pending fields',
   'lost approval submit', 'lost approval uncertainty', 'same approval retry',
   'approval acknowledgement', 'approval reload recovery', 'approval sign-out',
   'desktop decline login', 'desktop decline pending fields', 'desktop decline submit',
@@ -36,6 +37,8 @@ const field = (page, name) => page.locator('dt').filter({ hasText: new RegExp(`^
 const same = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
 const reviewPath = (reviewId) => `/authority/review#review=${reviewId}`;
 const loginPath = (reviewId) => `/login?${new URLSearchParams({ returnTo: reviewPath(reviewId) })}`;
+const ruleId = /^[a-z][a-z0-9-]{0,63}(?![\s\S])/;
+const diagnosticStage = /^(.+) \[axe:([a-z][a-z0-9-]{0,63}(?:,[a-z][a-z0-9-]{0,63}){0,19}); count:([1-9][0-9]{0,2})\](?![\s\S])/;
 
 export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } = {}) => {
   let base;
@@ -51,7 +54,8 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
   } catch { throw new Error(failure); }
   let currentStage = 'browser launch';
   const report = (stage) => {
-    check(stages.has(stage));
+    const diagnostic = diagnosticStage.exec(stage);
+    check(stages.has(stage) || (diagnostic && stages.has(diagnostic[1])));
     currentStage = stage;
     try { onStage?.(stage); } catch { throw new Error(failure); }
   };
@@ -124,7 +128,22 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
     };
   };
   const accessible = async (page) => {
+    // Scan settled rendered styles, including the normal Login success toast.
+    // Await real finite transitions; persistent progress motion must not hang
+    // the proof, and a canceled animation still completes this settling step.
+    await page.evaluate(async () => {
+      await Promise.all(globalThis.document.getAnimations()
+        .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+        .map((animation) => animation.finished.catch(() => undefined)));
+    });
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    if (result.violations.length > 0) {
+      // Only bounded library rule IDs and a count may cross the diagnostic
+      // callback. Never expose Axe nodes, targets, HTML, account data or URLs.
+      const ids = [...new Set(result.violations.map((violation) => violation.id)
+        .filter((id) => typeof id === 'string' && ruleId.test(id)))].sort().slice(0, 20);
+      report(`${currentStage} [axe:${ids.join(',') || 'unclassified'}; count:${Math.min(result.violations.length, 999)}]`);
+    }
     check(result.violations.length === 0);
     check(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth));
   };
@@ -243,11 +262,15 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
       await inContext(phone, async (page) => {
         report('foreign login');
         await signIn(page, reviewId, other);
-        report('foreign review refusal');
+        report('foreign review heading');
         await expect(page.getByRole('heading', { name: 'This request is no longer available', exact: true })).toBeVisible();
+        report('foreign private state denial');
         await noPrivateDetails(page, exactReview);
+        report('foreign booking denial');
         await notBooked(page);
+        report('foreign accessibility');
         await accessible(page);
+        report('foreign sanitized capture');
         await capture(page, 'foreign-unavailable');
       });
     }),

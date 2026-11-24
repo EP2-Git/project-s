@@ -106,7 +106,9 @@ The browser driver uses real normal sign-in, not injected tokens, storage state
 or mocked HTTP. It never records traces, HAR, Auth headers or password forms.
 Axe, responsive bounds, keyboard behavior and screenshots of synthetic review
 states provide agent-run evidence; screenshots are not independent usability
-evaluation. Browser contexts close before listener quiescence and owned SQL
+evaluation. Accessibility scans wait for actual finite UI animations to finish,
+then check the whole page, including the sign-in toast; no rules or elements are
+excluded. Browser contexts close before listener quiescence and owned SQL
 cleanup. An uncertain shutdown withholds cleanup and fails the proof.
 
 ## Remaining product gates
