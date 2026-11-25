@@ -118,12 +118,33 @@ RPC checks, then removes those details and returns to sign-in. This deliberately
 orders the destructive session boundary last; it does not replace account
 tokens, change logout scope or weaken fresh verification/direct-RPC denials.
 
+## The original agent resumes the approved request
+
+The test listener also serves `GET /api/v2/delegated/step-ups/{reviewId}` to
+the original agent. It freshly verifies the agent credential and rechecks the
+request and its supporting authority under the principal lock. Pending returns
+only the review reference, state and deadline. A usable approval adds the
+preparation reference and reports the approval's deadline. The read does not
+hold a slot, consume permission or grant access to the human review details.
+Other agents, missing requests and requests that can no longer be used receive
+the same refusal. Account sessions cannot access the agent operation.
+
+The live proof uses the same request for browser approval and agent continuation.
+The agent reads the preparation over HTTP using its own credential and the review
+reference from the original escalation. It uses the existing private commit and
+receipt adapters to create one booking and recover the same receipt on retry.
+The harness verifies that the consumed request is then unavailable through the
+continuation read. The booking still depends on the commit's separate permission
+and availability checks. Without `--browser`, the native proof approves through
+the private issuer adapter and exercises the same agent handoff.
+
 ## Remaining product gates
 
 Disposable browser integration does not establish independent usability, a
 generally available approval link or host/guest bilateral authorization. The
 ordinary `/authority/review` route remains unavailable. The proposed terminal
-status/requester display design, explicit synthetic enablement review, actor
-continuation and confirmed booking receipt remain separate. Calendar,
+status/requester display design and explicit synthetic enablement review remain
+open. Normal agent transport and receipt delivery through the SDK or MCP remain
+to be wired. Calendar,
 notifications, guest lifecycle, real-user policy and Cloud operation are not
 enabled by this proof.

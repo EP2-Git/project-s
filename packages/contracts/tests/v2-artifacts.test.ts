@@ -36,10 +36,10 @@ describe('isolated v2 contract artifacts, not operation discovery', () => {
     expect(PROJECT_S_V2_CONTRACT_MEDIA_TYPE).toBe('application/vnd.project-s.v2+json');
     expect(PROJECT_S_V2_PROBLEM_MEDIA_TYPE).toBe('application/problem+json');
     expect(artifacts.jsonSchemaBundle.$defs.ContractVersion).toMatchObject({ const: 2 });
-    expect(Object.keys(artifacts.jsonSchemaBundle.$defs)).toHaveLength(48);
+    expect(Object.keys(artifacts.jsonSchemaBundle.$defs)).toHaveLength(50);
     expect(JSON.parse(stableStringify(artifacts))).toEqual(artifacts);
     // Pin this separate reviewed surface without changing the existing v1 pin.
-    expect(digest(artifacts)).toBe('66977092b59068359dce6eb48fbf2c226f3f6f8a78ab1c6587ef39499e8fa813');
+    expect(digest(artifacts)).toBe('f742f2714a232901c356876910747c87299a598292847c3af4d18c76266e9766');
   });
 
   it('keeps every nested object strict and exposes the additional runtime requirements', () => {
@@ -67,17 +67,25 @@ describe('isolated v2 contract artifacts, not operation discovery', () => {
     expect(bundle.$defs.PrincipalContext['x-project-s-internal-only']).toBe(true);
     expect(bundle.$defs.ProblemCode.enum).toContain('STEP_UP_REQUIRED');
     expect(bundle.$defs.ActorRegisterInput).toMatchObject({ required: ['label'] });
+    expect(bundle.$defs.DelegatedStepUpData).toMatchObject({ oneOf: [
+      { additionalProperties: false, properties: { state: { const: 'pending' } },
+        required: ['expiresAt', 'reviewId', 'state'] },
+      { additionalProperties: false, properties: { state: { const: 'approved' } },
+        required: ['expiresAt', 'preparationId', 'reviewId', 'state'] },
+    ] });
   });
 
   it('ships the new schemas only through the separate package export', async () => {
     const v1 = await import('@project-s/contracts');
     const v2 = await import('@project-s/contracts/v2');
     expect(v1).not.toHaveProperty('v2PrepareBookingInputSchema');
+    expect(v1).not.toHaveProperty('v2DelegatedStepUpDataSchema');
     expect(v1).not.toHaveProperty('generateV2JsonSchemaBundle');
     expect(v1).not.toHaveProperty('v2ActorContextSchema');
     expect(v1).not.toHaveProperty('v2ProblemEnvelopeSchema');
     expect(v2.PROJECT_S_V2_CONTRACT_VERSION).toBe(2);
     expect(v2.v2PrepareBookingInputSchema).toBeDefined();
+    expect(v2.v2DelegatedStepUpDataSchema).toBeDefined();
     expect(v2.v2ActorContextSchema).toBeDefined();
     expect(v2.v2ActorRevokeInputSchema).toBeDefined();
     expect(v2.v2ProblemEnvelopeSchema).toBeDefined();

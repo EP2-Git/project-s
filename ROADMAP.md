@@ -98,6 +98,11 @@ disposable browser proof joins actual sign-in, auth return and review screens,
 phone/keyboard use and exact retry to that same private boundary without enabling
 normal routes. Independent usability evaluation remains open.
 
+The [private agent continuation proof](docs/live-step-up-http-proof.md#the-original-agent-resumes-the-approved-request)
+connects that browser approval to the original agent's authenticated read of the
+approved preparation, followed by one booking and receipt recovery through the
+existing private adapters. The normal application and agent routes remain gated.
+
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 
 **Goal:** independently authorized guest-side and host-side agents coordinate one

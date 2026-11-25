@@ -93,10 +93,11 @@ async function main() {
     await import('../supabase/functions/_shared/delegatedPreparations.ts');
   const { createStepUpReviewHandler } = await import('../supabase/functions/_shared/stepUpReviewHttp.ts');
   const { createStepUpActionHandler } = await import('../supabase/functions/_shared/stepUpActionHttp.ts');
+  const { createDelegatedStepUpHandler } = await import('../supabase/functions/_shared/delegatedStepUpHttp.ts');
   const { createStepUpReviewClient, StepUpReviewClientError, STEP_UP_REVIEW_RESPONSE_MAX_BYTES } =
     await import('../src/services/stepUpReviewClient.ts');
   const { readBoundedText } = await import('@project-s/contracts');
-  const { v2ProblemEnvelopeSchema } = await import('@project-s/contracts/v2');
+  const { v2DelegatedStepUpResponseSchema, v2ProblemEnvelopeSchema } = await import('@project-s/contracts/v2');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
   const removeFixtureBookings = (ids, ownerClause) => `
     delete from public.bookings where user_id in (${ids}) and id in (
@@ -126,6 +127,31 @@ async function main() {
   const httpClient = (user) => createStepUpReviewClient({
     baseUrl: httpProof.origin, accessToken: user.authorization.slice('Bearer '.length),
   });
+  const actorStepUp = async (reviewId, authorization, status = 200) => {
+    const signal = AbortSignal.timeout(10_000);
+    const response = await fetch(`${httpProof.origin}/api/v2/delegated/step-ups/${reviewId}`, {
+      redirect: 'error', credentials: 'omit', cache: 'no-store', signal,
+      headers: { authorization },
+    });
+    check(response.status === status && response.headers.get('cache-control') === 'no-store');
+    check(response.headers.get('content-type') === (status === 200
+      ? 'application/vnd.project-s.v2+json' : 'application/problem+json'));
+    const text = await readBoundedText(response.body, STEP_UP_REVIEW_RESPONSE_MAX_BYTES, {
+      declaredLength: response.headers.get('content-length'), signal,
+    });
+    const body = JSON.parse(text);
+    if (status === 200) {
+      const { data } = v2DelegatedStepUpResponseSchema.parse(body);
+      check(data.reviewId === reviewId);
+      return data;
+    }
+    const { error } = v2ProblemEnvelopeSchema.parse(body);
+    check(error.status === status && error.code === (status === 401 ? 'AUTHENTICATION_REQUIRED' : 'FORBIDDEN'));
+    const detail = { ...error };
+    delete detail.requestId;
+    check(!text.includes(reviewId) && !text.includes('booker@example.invalid'));
+    return detail;
+  };
   const httpProblem = async (reviewId, authorization, { method = 'GET', action = '', input, origin: requestOrigin } = {}) => {
     const response = await fetch(`${httpProof.origin}/api/v2/authority/step-ups/${reviewId}${action}`, {
       method, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(10_000),
@@ -183,6 +209,7 @@ async function main() {
         and table_name='v2_booking_receipts' and column_name='step_up_preparation_id')
       and to_regprocedure('public.project_s_prepare_delegated_booking_v2(jsonb,uuid,uuid,jsonb)') is not null
       and to_regprocedure('public.project_s_get_step_up_review_v2(jsonb,uuid)') is not null
+      and to_regprocedure('public.project_s_get_delegated_step_up_v2(jsonb,uuid)') is not null
       and to_regprocedure('public.project_s_approve_step_up_v2(jsonb,uuid,uuid,uuid,bigint,text)') is not null
       and to_regprocedure('public.project_s_revoke_step_up_v2(jsonb,uuid,bigint)') is not null
       and to_regprocedure('public.project_s_commit_delegated_booking_v2(jsonb,uuid,uuid)') is not null
@@ -203,9 +230,11 @@ async function main() {
     };
     const readHandler = createStepUpReviewHandler(httpOptions);
     const actionHandler = createStepUpActionHandler(httpOptions);
+    const actorStepUpHandler = createDelegatedStepUpHandler({ binding, rpc });
     httpProof = await startStepUpHttpProof({
       handler: (request) => {
         if (!configured) return new Response('Synthetic proof is not configured.', { status: 503 });
+        if (new URL(request.url).pathname.startsWith('/api/v2/delegated/step-ups/')) return actorStepUpHandler(request);
         return browserAssets?.handle(request) ??
           (request.method === 'GET' ? readHandler(request) : actionHandler(request));
       },
@@ -798,7 +827,7 @@ async function main() {
       const nextStep = await prepareDelegatedBooking({ context: await reauthenticateActor(registered), input: nextInput, binding, rpc });
       check(nextStep.kind === 'step_up_required');
       const nextExact = await getStepUpReview({ context: await reauthenticate(a), reviewId: nextStep.stepUp.reviewId, binding, rpc });
-      return { mandate: nextMandate, input: nextInput, exact: nextExact };
+      return { mandate: nextMandate, input: nextInput, exact: nextExact, stepUp: nextStep.stepUp };
     };
 
     stage = 'pending step-up revocation is idempotent and leaves original authority active';
@@ -842,13 +871,32 @@ async function main() {
 
     stage = 'a distinct approved replacement remains live for profile-dependent deletion proof';
     const deletionStepUp = await createPendingStepUp();
+    const deletionApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId: deletionStepUp.exact.reviewId,
+      input: { expectedRevision: deletionStepUp.exact.revision, summaryDigest: deletionStepUp.exact.summaryDigest }, binding, rpc });
+    check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(deletionStepUp.exact.reviewId)}
+      and instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)} and state='active';`) === '1');
+    check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
+    record();
+
+    stage = 'requesting actor receives only its pending continuation status';
+    const bookingStepUp = await createPendingStepUp(slots[2].startAt);
+    const { reviewId: bookingReviewId, reviewUrl, expiresAt: reviewExpiresAt } = bookingStepUp.stepUp;
+    check(reviewUrl === `${httpProof.origin}/authority/review#review=${bookingReviewId}`);
+    const actorAuthorization = `Bearer ${registered.credential}`;
+    const pendingStatus = await actorStepUp(bookingReviewId, actorAuthorization);
+    check(pendingStatus.state === 'pending' && pendingStatus.expiresAt === reviewExpiresAt &&
+      Object.keys(pendingStatus).sort().join(',') === 'expiresAt,reviewId,state');
+    const foreignStatus = await actorStepUp(bookingReviewId, `Bearer ${otherActor.credential}`, 403);
+    const absentStatus = await actorStepUp(randomUUID(), `Bearer ${otherActor.credential}`, 403);
+    check(JSON.stringify(foreignStatus) === JSON.stringify(absentStatus));
+    await actorStepUp(bookingReviewId, a.authorization, 401);
     let browserOriginalApproval;
     if (browserProof) {
       stage = 'real browser approval commits before its response is lost';
-      dropApprovalFor = deletionStepUp.exact.reviewId;
+      dropApprovalFor = bookingReviewId;
       const beforeBrowserDrop = droppedResponses;
       const attempt = await browserProof.approveLost({
-        reviewId: deletionStepUp.exact.reviewId, exactReview: deletionStepUp.exact,
+        reviewId: bookingReviewId, exactReview: bookingStepUp.exact,
       });
       check(droppedResponses === beforeBrowserDrop + 1 && dropApprovalFor === undefined);
       const beforeRetry = sql(`select jsonb_build_object('preparationId',p.preparation_id,
@@ -856,7 +904,7 @@ async function main() {
         from private.v2_step_up_grants g join private.v2_step_up_preparations p on p.grant_id=g.grant_id
         join private.v2_authority_principals a
           on (a.instance_id,a.epoch,a.principal_id)=(g.instance_id,g.epoch,g.principal_id)
-        where g.review_id=${literal(deletionStepUp.exact.reviewId)} and g.state='active';`);
+        where g.review_id=${literal(bookingReviewId)} and g.state='active';`);
       check(beforeRetry.length > 0);
       browserOriginalApproval = JSON.parse(beforeRetry);
       stage = 'same mounted browser retries without another grant or event';
@@ -866,31 +914,38 @@ async function main() {
         from private.v2_step_up_grants g join private.v2_step_up_preparations p on p.grant_id=g.grant_id
         join private.v2_authority_principals a
           on (a.instance_id,a.epoch,a.principal_id)=(g.instance_id,g.epoch,g.principal_id)
-        where g.review_id=${literal(deletionStepUp.exact.reviewId)} and g.state='active';`);
+        where g.review_id=${literal(bookingReviewId)} and g.state='active';`);
       check(afterRetry === beforeRetry && sql(`select count(*) from private.v2_step_up_grants
-        where review_id=${literal(deletionStepUp.exact.reviewId)};`) === '1');
+        where review_id=${literal(bookingReviewId)};`) === '1');
       check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
       await attempt.finish();
+      const issuerReplay = await approveStepUpReview({ context: await reauthenticate(a), reviewId: bookingReviewId,
+        input: { expectedRevision: bookingStepUp.exact.revision, summaryDigest: bookingStepUp.exact.summaryDigest },
+        binding, rpc });
+      check(issuerReplay.preparationId === browserOriginalApproval.preparationId &&
+        issuerReplay.expiresAt === browserOriginalApproval.expiresAt);
       browserPassed += 1;
     }
-    const deletionApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId: deletionStepUp.exact.reviewId,
-      input: { expectedRevision: deletionStepUp.exact.revision, summaryDigest: deletionStepUp.exact.summaryDigest }, binding, rpc });
-    if (browserOriginalApproval) {
-      check(deletionApproved.preparationId === browserOriginalApproval.preparationId &&
-        deletionApproved.expiresAt === browserOriginalApproval.expiresAt);
+    if (!browserProof) {
+      // Exercise the same actor path during the native-only proof. The result
+      // of human approval never supplies an ID to the actor's commit input.
+      await approveStepUpReview({ context: await reauthenticate(a), reviewId: bookingReviewId,
+        input: { expectedRevision: bookingStepUp.exact.revision, summaryDigest: bookingStepUp.exact.summaryDigest },
+        binding, rpc });
     }
-    check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(deletionStepUp.exact.reviewId)}
-      and instance_id=${literal(binding.instanceId)} and epoch=1 and principal_id=${literal(a.context.principalId)} and state='active';`) === '1');
-    check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)};`) === '0');
-    record();
+    stage = 'original actor retrieves the approved preparation through its own HTTP request';
+    const approvedStatus = await actorStepUp(bookingReviewId, actorAuthorization);
+    check(approvedStatus.state === 'approved' &&
+      Object.keys(approvedStatus).sort().join(',') === 'expiresAt,preparationId,reviewId,state');
+    if (browserOriginalApproval) {
+      check(approvedStatus.preparationId === browserOriginalApproval.preparationId &&
+        approvedStatus.expiresAt === browserOriginalApproval.expiresAt);
+    }
+    const secondRead = await actorStepUp(bookingReviewId, actorAuthorization);
+    check(JSON.stringify(secondRead) === JSON.stringify(approvedStatus));
 
-    stage = 'live actor commits one separately approved exact exception and recovers the receipt';
-    const bookingStepUp = await createPendingStepUp(slots[2].startAt);
-    const bookingApproved = await approveStepUpReview({ context: await reauthenticate(a),
-      reviewId: bookingStepUp.exact.reviewId,
-      input: { expectedRevision: bookingStepUp.exact.revision, summaryDigest: bookingStepUp.exact.summaryDigest },
-      binding, rpc });
-    const bookingInput = { preparationId: bookingApproved.preparationId, idempotencyKey: randomUUID() };
+    stage = 'original actor commits once using its own continuation result and recovers the receipt';
+    const bookingInput = { preparationId: approvedStatus.preparationId, idempotencyKey: randomUUID() };
     const receipt = await commitDelegatedBooking({ context: await reauthenticateActor(registered),
       input: bookingInput, binding, rpc });
     check(uuid(receipt.receiptId) && receipt.booking.startAt === slots[2].startAt &&
@@ -904,6 +959,10 @@ async function main() {
     check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)}
       and meeting_type_id=${literal(meeting.data.id)} and start_time=${literal(slots[2].startAt)}::timestamptz
       and status='confirmed';`) === '1');
+    stage = 'consumed continuation is opaque while its separate exact receipt still reconciles';
+    const consumedStatus = await actorStepUp(bookingReviewId, actorAuthorization, 403);
+    const missingStatus = await actorStepUp(randomUUID(), actorAuthorization, 403);
+    check(JSON.stringify(consumedStatus) === JSON.stringify(missingStatus));
     record();
 
     stage = 'own deletion and exact retry remove PII without a second event';
@@ -1097,6 +1156,7 @@ async function main() {
   if (browserRequested) {
     console.log(`Step-up browser, normal sign-in, HTTP, Auth and SQL: ${browserPassed} journey groups passed; owned fixtures removed; no application route enabled.`);
   }
+  console.log('Actor step-up continuation: the original actor read pending and approved over HTTP, committed once and recovered the same receipt; account, foreign and consumed reads refused.');
 }
 
 try { await main(); }
