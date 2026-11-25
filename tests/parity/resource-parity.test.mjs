@@ -115,5 +115,5 @@ test('resource parity: SDK success and error streams both stop at the same byte 
 test('resource parity: v1/v2 generated artifacts remain byte-identical', () => {
   const digest = (value) => createHash('sha256').update(stableStringify(value, 0)).digest('hex');
   assert.equal(digest(generateContractArtifacts()), '827656a8a8748d1d58afa9042daae09fa3be586d274d86308e09ae8ace3f57be');
-  assert.equal(digest(generateV2ContractArtifacts()), '66977092b59068359dce6eb48fbf2c226f3f6f8a78ab1c6587ef39499e8fa813');
+  assert.equal(digest(generateV2ContractArtifacts()), 'f742f2714a232901c356876910747c87299a598292847c3af4d18c76266e9766');
 });

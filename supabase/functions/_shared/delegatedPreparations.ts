@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   v2ActorContextSchema, v2BookingReceiptDataSchema, v2CreateBookingInputSchema,
-  v2PrepareBookingDataSchema, v2PrepareBookingInputSchema,
+  v2DelegatedStepUpDataSchema, v2PrepareBookingDataSchema, v2PrepareBookingInputSchema,
   v2ProblemStepUpSchema, v2RevisionNode, v2UuidNode,
 } from './.generated/contracts/dist/v2/index.js';
 import { ActorCredentialError, type AuthorityBinding, type AuthorityRpc } from './actorCredentials.ts';
@@ -36,6 +36,7 @@ const actorFor = (context: unknown, input: AuthorityBinding) => {
 };
 
 type BookingRpc = 'project_s_prepare_delegated_booking_v2'
+  | 'project_s_get_delegated_step_up_v2'
   | 'project_s_commit_delegated_booking_v2' | 'project_s_read_delegated_booking_receipt_v2';
 
 const invoke = async (rpc: AuthorityRpc, name: BookingRpc, args: Record<string, unknown>) => {
@@ -98,6 +99,20 @@ export const prepareDelegatedBooking = async ({ context, input, binding, rpc }: 
   // Tagged internal output is not an HTTP envelope or provider grant. A future
   // transport must build the reviewed v2 success/problem shapes and remain
   // unavailable until the full commit/step-up/retention/enablement gates pass.
+  return result.data;
+};
+
+/** Return the original actor's current review state and any approved preparation reference. */
+export const getDelegatedStepUp = async ({ context, reviewId, binding, rpc }: {
+  context: unknown; reviewId: unknown; binding: AuthorityBinding; rpc: AuthorityRpc;
+}) => {
+  const actor = actorFor(context, binding);
+  const id = v2UuidNode.zod.safeParse(reviewId);
+  if (!id.success) throw invalid();
+  const result = v2DelegatedStepUpDataSchema.safeParse(await invoke(rpc, 'project_s_get_delegated_step_up_v2', {
+    p_context: actor, p_review_id: id.data,
+  }));
+  if (!result.success || result.data.reviewId !== id.data) throw internal();
   return result.data;
 };
 

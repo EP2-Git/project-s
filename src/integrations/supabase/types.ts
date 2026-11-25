@@ -408,6 +408,10 @@ export type Database = {
         }
         Returns: Json
       }
+      project_s_get_delegated_step_up_v2: {
+        Args: { p_context: Json; p_review_id: string }
+        Returns: Json
+      }
       project_s_get_mandate_v2: {
         Args: { p_context: Json; p_mandate_id: string }
         Returns: Json

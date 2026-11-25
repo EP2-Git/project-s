@@ -196,6 +196,32 @@ export const v2PrepareBookingDataNode = objectNode({
 }, { title: 'V2PrepareBookingData' });
 export const v2PrepareBookingDataSchema = v2PrepareBookingDataNode.zod;
 
+const delegatedStepUpShape = { reviewId: v2UuidNode, expiresAt: v2InstantNode } as const;
+const v2DelegatedStepUpPendingNode = objectNode({
+  ...delegatedStepUpShape,
+  state: contractNode(contractLiteral('pending'), { type: 'string', const: 'pending' }),
+}, { title: 'V2DelegatedStepUpPending' });
+const v2DelegatedStepUpApprovedNode = objectNode({
+  ...delegatedStepUpShape,
+  state: contractNode(contractLiteral('approved'), { type: 'string', const: 'approved' }),
+  preparationId: v2UuidNode,
+}, { title: 'V2DelegatedStepUpApproved' });
+export const v2DelegatedStepUpDataNode = contractNode(
+  z.preprocess((value, context) => {
+    if (value !== null && typeof value === 'object' && Object.hasOwn(value, '__proto__')) {
+      context.addIssue({ code: 'custom', message: 'Invalid continuation response.' });
+      return z.NEVER;
+    }
+    return value;
+  }, z.union([v2DelegatedStepUpPendingNode.zod, v2DelegatedStepUpApprovedNode.zod])),
+  {
+    title: 'V2DelegatedStepUpData',
+    description: 'Private continuation for the original actor. An approved preparation is an authenticated reference and does not reserve the slot.',
+    oneOf: [v2DelegatedStepUpPendingNode.jsonSchema, v2DelegatedStepUpApprovedNode.jsonSchema],
+  },
+);
+export const v2DelegatedStepUpDataSchema = v2DelegatedStepUpDataNode.zod;
+
 export const v2CreateBookingInputNode = objectNode({
   preparationId: v2UuidNode,
   idempotencyKey: v2UuidNode,
@@ -238,6 +264,8 @@ export const v2MandateApprovedResponseNode = v2SuccessEnvelopeNode(v2MandateAppr
 export const v2MandateApprovedResponseSchema = v2MandateApprovedResponseNode.zod;
 export const v2PrepareBookingResponseNode = v2SuccessEnvelopeNode(v2PrepareBookingDataNode);
 export const v2PrepareBookingResponseSchema = v2PrepareBookingResponseNode.zod;
+export const v2DelegatedStepUpResponseNode = v2SuccessEnvelopeNode(v2DelegatedStepUpDataNode);
+export const v2DelegatedStepUpResponseSchema = v2DelegatedStepUpResponseNode.zod;
 export const v2CreateBookingResponseNode = v2SuccessEnvelopeNode(v2BookingReceiptDataNode);
 export const v2CreateBookingResponseSchema = v2CreateBookingResponseNode.zod;
 
@@ -249,10 +277,12 @@ export type V2MandateApprovedData = z.infer<typeof v2MandateApprovedDataSchema>;
 export type V2PrepareBookingInput = z.infer<typeof v2PrepareBookingInputSchema>;
 export type V2PreparedBookingSummary = z.infer<typeof v2PreparedBookingSummarySchema>;
 export type V2PrepareBookingData = z.infer<typeof v2PrepareBookingDataSchema>;
+export type V2DelegatedStepUpData = z.infer<typeof v2DelegatedStepUpDataSchema>;
 export type V2CreateBookingInput = z.infer<typeof v2CreateBookingInputSchema>;
 export type V2Booking = z.infer<typeof v2BookingSchema>;
 export type V2BookingReceiptData = z.infer<typeof v2BookingReceiptDataSchema>;
 export type V2MandateReviewResponse = z.infer<typeof v2MandateReviewResponseSchema>;
 export type V2MandateApprovedResponse = z.infer<typeof v2MandateApprovedResponseSchema>;
 export type V2PrepareBookingResponse = z.infer<typeof v2PrepareBookingResponseSchema>;
+export type V2DelegatedStepUpResponse = z.infer<typeof v2DelegatedStepUpResponseSchema>;
 export type V2CreateBookingResponse = z.infer<typeof v2CreateBookingResponseSchema>;
