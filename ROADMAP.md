@@ -99,9 +99,10 @@ phone/keyboard use and exact retry to that same private boundary without enablin
 normal routes. Independent usability evaluation remains open.
 
 The [private agent continuation proof](docs/live-step-up-http-proof.md#the-original-agent-resumes-the-approved-request)
-connects that browser approval to the original agent's authenticated read of the
-approved preparation, followed by one booking and receipt recovery through the
-existing private adapters. The normal application and agent routes remain gated.
+connects that browser approval to the original agent's authenticated lookup,
+booking and receipt recovery through the same disposable HTTP listener. The
+proof recovers a lost commit response and refuses a slot taken after approval.
+The normal application and agent routes remain gated.
 
 ## Later — 0.3.0-prealpha: Bilateral agent proof
 

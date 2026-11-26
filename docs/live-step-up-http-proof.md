@@ -131,12 +131,21 @@ the same refusal. Account sessions cannot access the agent operation.
 
 The live proof uses the same request for browser approval and agent continuation.
 The agent reads the preparation over HTTP using its own credential and the review
-reference from the original escalation. It uses the existing private commit and
-receipt adapters to create one booking and recover the same receipt on retry.
-The harness verifies that the consumed request is then unavailable through the
-continuation read. The booking still depends on the commit's separate permission
-and availability checks. Without `--browser`, the native proof approves through
-the private issuer adapter and exercises the same agent handoff.
+reference from the original escalation. The listener's private commit and receipt
+handlers verify the actor again on every call. Commit accepts only the approved
+preparation reference and the agent's retry key in a bounded JSON object. The
+database still decides whether permission and availability allow a booking.
+
+The harness drops the first successful commit response after the database saves
+the booking. Resending the exact preparation and key returns the original receipt,
+which the same actor can also read by reference. A separate approval for the same
+slot receives `SLOT_UNAVAILABLE` once the first booking takes it. That refusal
+creates no receipt. Another actor cannot learn whether the original receipt exists.
+After the successful commit, the consumed continuation is unavailable. The agent
+can use its exact retry or receipt read to reconcile the result.
+
+Without `--browser`, the native proof approves through the private issuer adapter
+and exercises the same agent HTTP requests.
 
 ## Remaining product gates
 
@@ -144,7 +153,7 @@ Disposable browser integration does not establish independent usability, a
 generally available approval link or host/guest bilateral authorization. The
 ordinary `/authority/review` route remains unavailable. The proposed terminal
 status/requester display design and explicit synthetic enablement review remain
-open. Normal agent transport and receipt delivery through the SDK or MCP remain
+open. Normal routing and agent receipt delivery through the SDK or MCP remain
 to be wired. Calendar,
 notifications, guest lifecycle, real-user policy and Cloud operation are not
 enabled by this proof.
