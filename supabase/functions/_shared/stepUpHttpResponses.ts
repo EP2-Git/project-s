@@ -31,6 +31,17 @@ const refusals = {
   INTERNAL_ERROR: { status: 500, detail: 'The authority service could not complete the request.' },
 } as const satisfies Partial<Record<V2ProblemCode, { status: number; detail: string }>>;
 type RefusalCode = keyof typeof refusals;
+const bookingRefusals = {
+  ...refusals,
+  VALIDATION_ERROR: { status: 400, detail: 'The delegated booking request is invalid.' },
+  NOT_FOUND: { status: 404, detail: 'No delegated booking endpoint matches this request.' },
+  MEETING_TYPE_UNAVAILABLE: { status: 404, detail: 'The meeting type is unavailable.' },
+  PREPARATION_STALE: { status: 409, detail: 'The prepared booking is no longer current.' },
+  IDEMPOTENCY_KEY_REUSED: { status: 409, detail: 'That retry key was used for a different request.' },
+  MANDATE_EXPIRED: { status: 410, detail: 'The booking permission has expired.' },
+  RECEIPT_UNAVAILABLE: { status: 410, detail: 'The booking receipt is no longer available.' },
+  RATE_LIMITED: { status: 429, detail: 'The authority request limit has been reached.' },
+} as const satisfies Partial<Record<V2ProblemCode, { status: number; detail: string }>>;
 export const refuseStepUpHttp: (code: RefusalCode) => never = (code) => {
   const refusal = refusals[code];
   throw new ActorCredentialError(code, refusal.status, refusal.detail);
@@ -48,25 +59,37 @@ export const stepUpHttpJson = (body: unknown, status: number, mediaType: string,
   },
 );
 
-export const stepUpHttpProblem = (error: unknown, requestId: string): Response => {
+const authorityHttpProblem = (
+  error: unknown,
+  requestId: string,
+  allowed: Partial<Record<V2ProblemCode, { status: number; detail: string }>>,
+  title: string,
+): Response => {
   // Never reflect status, message or cause from Auth/RPC/parser diagnostics.
   // The one alternate validation status is the existing bounded-body refusal.
-  const code: RefusalCode = error instanceof ActorCredentialError &&
-    Object.hasOwn(refusals, error.code) ? error.code as RefusalCode : 'INTERNAL_ERROR';
+  const matched = error instanceof ActorCredentialError && Object.hasOwn(allowed, error.code)
+    ? allowed[error.code as V2ProblemCode] : undefined;
+  const code = matched && error instanceof ActorCredentialError ? error.code : 'INTERNAL_ERROR';
   const tooLarge = error instanceof ActorCredentialError && code === 'VALIDATION_ERROR' && error.status === 413;
   const { status, detail } = tooLarge
     ? { status: 413, detail: 'The request body is too large.' }
-    : refusals[code];
+    : matched ?? refusals.INTERNAL_ERROR;
   const retry = code === 'AUTHORITY_BUSY';
   const body = v2ProblemEnvelopeSchema.parse({
     contractVersion: 2,
     requestId,
     error: {
       code, status, requestId, detail,
-      title: 'Project S review request failed',
+      title,
       type: `https://project-s.local/problems/${code.toLowerCase().replaceAll('_', '-')}`,
       ...(retry ? { retry: { action: 'retry_after', afterSeconds: 1 } } : {}),
     },
   });
   return stepUpHttpJson(body, status, 'application/problem+json', retry);
 };
+
+export const stepUpHttpProblem = (error: unknown, requestId: string): Response =>
+  authorityHttpProblem(error, requestId, refusals, 'Project S review request failed');
+
+export const delegatedBookingHttpProblem = (error: unknown, requestId: string): Response =>
+  authorityHttpProblem(error, requestId, bookingRefusals, 'Project S delegated booking request failed');

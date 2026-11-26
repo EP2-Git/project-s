@@ -89,15 +89,18 @@ async function main() {
     createMandateReview, approveMandate, getMandate, revokeMandate, getStepUpReview,
     approveStepUpReview, revokeStepUpReview,
   } = await import('../supabase/functions/_shared/mandateControls.ts');
-  const { prepareDelegatedBooking, commitDelegatedBooking, readDelegatedBookingReceipt } =
+  const { prepareDelegatedBooking, readDelegatedBookingReceipt } =
     await import('../supabase/functions/_shared/delegatedPreparations.ts');
   const { createStepUpReviewHandler } = await import('../supabase/functions/_shared/stepUpReviewHttp.ts');
   const { createStepUpActionHandler } = await import('../supabase/functions/_shared/stepUpActionHttp.ts');
   const { createDelegatedStepUpHandler } = await import('../supabase/functions/_shared/delegatedStepUpHttp.ts');
+  const { createDelegatedBookingCommitHandler, createDelegatedBookingReceiptHandler } =
+    await import('../supabase/functions/_shared/delegatedBookingHttp.ts');
   const { createStepUpReviewClient, StepUpReviewClientError, STEP_UP_REVIEW_RESPONSE_MAX_BYTES } =
     await import('../src/services/stepUpReviewClient.ts');
   const { readBoundedText } = await import('@project-s/contracts');
-  const { v2DelegatedStepUpResponseSchema, v2ProblemEnvelopeSchema } = await import('@project-s/contracts/v2');
+  const { PROJECT_S_V2_CONTRACT_MEDIA_TYPE, v2CreateBookingResponseSchema, v2DelegatedStepUpResponseSchema,
+    v2ProblemEnvelopeSchema } = await import('@project-s/contracts/v2');
   const binding = { instanceId: randomUUID(), epoch: 1, audience: origin.origin };
   const removeFixtureBookings = (ids, ownerClause) => `
     delete from public.bookings where user_id in (${ids}) and id in (
@@ -114,6 +117,8 @@ async function main() {
   let browserSignedOut = false;
   let dropApprovalFor;
   let droppedResponses = 0;
+  let dropBookingResponse = false;
+  let droppedBookingResponses = 0;
   let httpAuthCalls = 0;
   let httpRpcCalls = 0;
   let httpPassed = 0;
@@ -127,30 +132,40 @@ async function main() {
   const httpClient = (user) => createStepUpReviewClient({
     baseUrl: httpProof.origin, accessToken: user.authorization.slice('Bearer '.length),
   });
-  const actorStepUp = async (reviewId, authorization, status = 200) => {
+  const actorRequest = async (path, authorization, input, status, responseSchema, expectedCode) => {
     const signal = AbortSignal.timeout(10_000);
-    const response = await fetch(`${httpProof.origin}/api/v2/delegated/step-ups/${reviewId}`, {
+    const response = await fetch(`${httpProof.origin}/api/v2/delegated/${path}`, {
       redirect: 'error', credentials: 'omit', cache: 'no-store', signal,
-      headers: { authorization },
+      ...(input === undefined ? {} : { method: 'POST', body: JSON.stringify(input) }),
+      headers: { authorization, ...(input === undefined ? {} : { 'content-type': PROJECT_S_V2_CONTRACT_MEDIA_TYPE }) },
     });
     check(response.status === status && response.headers.get('cache-control') === 'no-store');
-    check(response.headers.get('content-type') === (status === 200
-      ? 'application/vnd.project-s.v2+json' : 'application/problem+json'));
+    check(response.headers.get('content-type') === (expectedCode ? 'application/problem+json' : PROJECT_S_V2_CONTRACT_MEDIA_TYPE));
     const text = await readBoundedText(response.body, STEP_UP_REVIEW_RESPONSE_MAX_BYTES, {
       declaredLength: response.headers.get('content-length'), signal,
     });
+    check(!text.includes(authorization) && !text.includes('booker@example.invalid') && !text.includes('Synthetic Booker'));
     const body = JSON.parse(text);
-    if (status === 200) {
-      const { data } = v2DelegatedStepUpResponseSchema.parse(body);
-      check(data.reviewId === reviewId);
-      return data;
-    }
+    if (!expectedCode) return responseSchema.parse(body).data;
     const { error } = v2ProblemEnvelopeSchema.parse(body);
-    check(error.status === status && error.code === (status === 401 ? 'AUTHENTICATION_REQUIRED' : 'FORBIDDEN'));
+    check(error.status === status && error.code === expectedCode && !text.includes(binding.instanceId));
     const detail = { ...error };
     delete detail.requestId;
-    check(!text.includes(reviewId) && !text.includes('booker@example.invalid'));
     return detail;
+  };
+  const actorStepUp = async (reviewId, authorization, status = 200) => {
+    const expectedCode = status === 200 ? undefined : status === 401 ? 'AUTHENTICATION_REQUIRED' : 'FORBIDDEN';
+    const data = await actorRequest(`step-ups/${reviewId}`, authorization, undefined, status,
+      v2DelegatedStepUpResponseSchema, expectedCode);
+    check(expectedCode ? !JSON.stringify(data).includes(reviewId) : data.reviewId === reviewId);
+    return data;
+  };
+  const actorCommit = (authorization, input, status = 201, code) =>
+    actorRequest('bookings', authorization, input, status, v2CreateBookingResponseSchema, code);
+  const actorReceipt = async (receiptId, authorization, status = 200, code) => {
+    const data = await actorRequest(`receipts/${receiptId}`, authorization, undefined, status, v2CreateBookingResponseSchema, code);
+    check(code ? !JSON.stringify(data).includes(receiptId) : data.receiptId === receiptId);
+    return data;
   };
   const httpProblem = async (reviewId, authorization, { method = 'GET', action = '', input, origin: requestOrigin } = {}) => {
     const response = await fetch(`${httpProof.origin}/api/v2/authority/step-ups/${reviewId}${action}`, {
@@ -231,16 +246,27 @@ async function main() {
     const readHandler = createStepUpReviewHandler(httpOptions);
     const actionHandler = createStepUpActionHandler(httpOptions);
     const actorStepUpHandler = createDelegatedStepUpHandler({ binding, rpc });
+    const actorCommitHandler = createDelegatedBookingCommitHandler({ binding, rpc });
+    const actorReceiptHandler = createDelegatedBookingReceiptHandler({ binding, rpc });
     httpProof = await startStepUpHttpProof({
       handler: (request) => {
         if (!configured) return new Response('Synthetic proof is not configured.', { status: 503 });
-        if (new URL(request.url).pathname.startsWith('/api/v2/delegated/step-ups/')) return actorStepUpHandler(request);
+        const path = new URL(request.url).pathname;
+        if (path.startsWith('/api/v2/delegated/step-ups/')) return actorStepUpHandler(request);
+        if (path === '/api/v2/delegated/bookings') return actorCommitHandler(request);
+        if (path.startsWith('/api/v2/delegated/receipts/')) return actorReceiptHandler(request);
         return browserAssets?.handle(request) ??
           (request.method === 'GET' ? readHandler(request) : actionHandler(request));
       },
       dropResponse: (request, response) => {
+        const path = new URL(request.url).pathname;
+        if (dropBookingResponse && request.method === 'POST' && response.status === 201 && path === '/api/v2/delegated/bookings') {
+          dropBookingResponse = false;
+          droppedBookingResponses += 1;
+          return true;
+        }
         if (dropApprovalFor && request.method === 'POST' && response.status === 200 &&
-            new URL(request.url).pathname === `/api/v2/authority/step-ups/${dropApprovalFor}/approve`) {
+            path === `/api/v2/authority/step-ups/${dropApprovalFor}/approve`) {
           dropApprovalFor = undefined;
           droppedResponses += 1;
           return true;
@@ -869,8 +895,10 @@ async function main() {
       and p.preparation_id=${literal(linkedApproved.preparationId)} and p.state='invalidated' and p.summary is null;`) === '1');
     record();
 
-    stage = 'a distinct approved replacement remains live for profile-dependent deletion proof';
-    const deletionStepUp = await createPendingStepUp();
+    stage = 'approve a competing exact preparation for the slot before any commit';
+    // Keep this distinct replacement for both the lost-slot and existing
+    // profile-dependent deletion proof, without adding any authority events.
+    const deletionStepUp = await createPendingStepUp(slots[2].startAt);
     const deletionApproved = await approveStepUpReview({ context: await reauthenticate(a), reviewId: deletionStepUp.exact.reviewId,
       input: { expectedRevision: deletionStepUp.exact.revision, summaryDigest: deletionStepUp.exact.summaryDigest }, binding, rpc });
     check(sql(`select count(*) from private.v2_step_up_grants where review_id=${literal(deletionStepUp.exact.reviewId)}
@@ -944,18 +972,42 @@ async function main() {
     const secondRead = await actorStepUp(bookingReviewId, actorAuthorization);
     check(JSON.stringify(secondRead) === JSON.stringify(approvedStatus));
 
-    stage = 'original actor commits once using its own continuation result and recovers the receipt';
+    stage = 'original actor commits over HTTP and loses the response after the write';
     const bookingInput = { preparationId: approvedStatus.preparationId, idempotencyKey: randomUUID() };
-    const receipt = await commitDelegatedBooking({ context: await reauthenticateActor(registered),
-      input: bookingInput, binding, rpc });
-    check(uuid(receipt.receiptId) && receipt.booking.startAt === slots[2].startAt &&
+    dropBookingResponse = true;
+    let lostResponse;
+    try { await actorCommit(actorAuthorization, bookingInput); }
+    catch (error) { lostResponse = error; }
+    check(lostResponse instanceof TypeError && droppedBookingResponses === 1 && !dropBookingResponse);
+    const committedReceiptId = sql(`select receipt_id from private.v2_booking_receipts
+      where instance_id=${literal(binding.instanceId)} and epoch=1
+      and preparation_id=${literal(bookingInput.preparationId)};`);
+    check(uuid(committedReceiptId));
+
+    stage = 'exact HTTP retry and receipt read recover the original booking';
+    const receipt = await actorCommit(actorAuthorization, bookingInput);
+    check(receipt.receiptId === committedReceiptId && receipt.booking.startAt === slots[2].startAt &&
       receipt.booking.endAt === slots[2].endAt && receipt.booking.guestTimeZone === 'America/Halifax');
-    const bookingRetry = await commitDelegatedBooking({ context: await reauthenticateActor(registered),
-      input: bookingInput, binding, rpc });
-    const readReceipt = await readDelegatedBookingReceipt({ context: await reauthenticateActor(registered),
-      receiptId: receipt.receiptId, binding, rpc });
-    check(JSON.stringify(receipt) === JSON.stringify(bookingRetry) &&
-      JSON.stringify(receipt) === JSON.stringify(readReceipt));
+    const readReceipt = await actorReceipt(receipt.receiptId, actorAuthorization);
+    check(JSON.stringify(receipt) === JSON.stringify(readReceipt));
+    const foreignActorAuthorization = `Bearer ${otherActor.credential}`;
+    const foreignReceipt = await actorReceipt(receipt.receiptId, foreignActorAuthorization, 403, 'FORBIDDEN');
+    const missingReceipt = await actorReceipt(randomUUID(), foreignActorAuthorization, 403, 'FORBIDDEN');
+    check(JSON.stringify(foreignReceipt) === JSON.stringify(missingReceipt));
+    await actorReceipt(receipt.receiptId, a.authorization, 401, 'AUTHENTICATION_REQUIRED');
+    await actorCommit(foreignActorAuthorization, bookingInput, 403, 'FORBIDDEN');
+    await actorCommit(a.authorization, bookingInput, 401, 'AUTHENTICATION_REQUIRED');
+
+    stage = 'approved competing request receives a structured slot-unavailable refusal';
+    const competingStatus = await actorStepUp(deletionStepUp.exact.reviewId, actorAuthorization);
+    check(competingStatus.state === 'approved' && competingStatus.preparationId === deletionApproved.preparationId);
+    await actorCommit(actorAuthorization, { ...bookingInput, preparationId: competingStatus.preparationId },
+      409, 'IDEMPOTENCY_KEY_REUSED');
+    const competingInput = { preparationId: competingStatus.preparationId, idempotencyKey: randomUUID() };
+    const unavailable = await actorCommit(actorAuthorization, competingInput, 409, 'SLOT_UNAVAILABLE');
+    check(JSON.stringify(unavailable) === JSON.stringify(await actorCommit(actorAuthorization, competingInput, 409, 'SLOT_UNAVAILABLE')));
+    check(sql(`select count(*) from private.v2_booking_receipts where instance_id=${literal(binding.instanceId)}
+      and epoch=1 and preparation_id=${literal(competingInput.preparationId)};`) === '0');
     check(sql(`select count(*) from public.bookings where user_id=${literal(b.context.principalId)}
       and meeting_type_id=${literal(meeting.data.id)} and start_time=${literal(slots[2].startAt)}::timestamptz
       and status='confirmed';`) === '1');
@@ -1157,6 +1209,7 @@ async function main() {
     console.log(`Step-up browser, normal sign-in, HTTP, Auth and SQL: ${browserPassed} journey groups passed; owned fixtures removed; no application route enabled.`);
   }
   console.log('Actor step-up continuation: the original actor read pending and approved over HTTP, committed once and recovered the same receipt; account, foreign and consumed reads refused.');
+  console.log('Actor booking and receipt HTTP: exact retry after a dropped commit response recovered one booking and its receipt; competing approval returned SLOT_UNAVAILABLE.');
 }
 
 try { await main(); }
