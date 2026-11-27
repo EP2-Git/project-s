@@ -1,11 +1,11 @@
 import { BodyTooLargeError, PROJECT_S_PUBLIC_REQUEST_MAX_BYTES, readBoundedText } from '@project-s/contracts';
 import {
-  PROJECT_S_V2_CONTRACT_MEDIA_TYPE, v2CreateBookingResponseSchema, v2UuidNode,
+  PROJECT_S_V2_CONTRACT_MEDIA_TYPE, v2CreateBookingResponseSchema, v2PrepareBookingResponseSchema, v2UuidNode,
 } from './.generated/contracts/dist/v2/index.js';
 import { ActorCredentialError, authenticateActor } from './actorCredentials.ts';
-import { commitDelegatedBooking, readDelegatedBookingReceipt } from './delegatedPreparations.ts';
+import { commitDelegatedBooking, prepareDelegatedBooking, readDelegatedBookingReceipt } from './delegatedPreparations.ts';
 import {
-  delegatedBookingHttpProblem, refuseStepUpHttp, stepUpHttpJson, type StepUpHttpOptions,
+  delegatedBookingHttpProblem, delegatedBookingHttpStepUp, refuseStepUpHttp, stepUpHttpJson, type StepUpHttpOptions,
 } from './stepUpHttpResponses.ts';
 
 type ActorBookingHttpOptions = Pick<StepUpHttpOptions, 'binding' | 'rpc' | 'now'>;
@@ -18,7 +18,16 @@ const authenticateBookingActor = (request: Request, requestId: string, options: 
   });
 };
 
-const readCommitInput = async (request: Request): Promise<unknown> => {
+const requireBookingPost = (request: Request, path: string) => {
+  if (request.method !== 'POST' || new URL(request.url).pathname !== path) refuseStepUpHttp('NOT_FOUND');
+  if (request.url.includes('?') || request.url.includes('#')) refuseStepUpHttp('VALIDATION_ERROR');
+  const mediaType = (request.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase();
+  if (mediaType !== 'application/json' && mediaType !== PROJECT_S_V2_CONTRACT_MEDIA_TYPE) {
+    refuseStepUpHttp('VALIDATION_ERROR');
+  }
+};
+
+const readBookingInput = async (request: Request, fieldCount: number): Promise<unknown> => {
   let text: string;
   try {
     text = await readBoundedText(request.body, PROJECT_S_PUBLIC_REQUEST_MAX_BYTES, {
@@ -34,11 +43,11 @@ const readCommitInput = async (request: Request): Promise<unknown> => {
   let input: unknown;
   try { input = JSON.parse(text); }
   catch { refuseStepUpHttp('VALIDATION_ERROR'); }
-  // A valid commit is a flat object with exactly two string members. Counting
+  // Valid booking inputs are flat objects with a fixed number of string members. Counting
   // member separators in valid JSON before schema validation rejects
   // duplicate keys, including escaped aliases that JSON.parse would overwrite.
   const separators = text.replace(/"(?:[^"\\]|\\[\s\S])*"/g, '').match(/:/g);
-  if (separators?.length !== 2) refuseStepUpHttp('VALIDATION_ERROR');
+  if (separators?.length !== fieldCount) refuseStepUpHttp('VALIDATION_ERROR');
   return input;
 };
 
@@ -47,22 +56,29 @@ const receiptResponse = (data: unknown, requestId: string, status: 200 | 201) =>
     status, PROJECT_S_V2_CONTRACT_MEDIA_TYPE);
 
 // Unwired factories, constructed only with trusted server dependencies.
+export const createDelegatedBookingPrepareHandler = (options: ActorBookingHttpOptions) =>
+  async (request: Request): Promise<Response> => {
+    const requestId = crypto.randomUUID();
+    try {
+      requireBookingPost(request, '/api/v2/delegated/bookings/prepare');
+      const context = await authenticateBookingActor(request, requestId, options);
+      const input = await readBookingInput(request, 4);
+      const outcome = await prepareDelegatedBooking({ context, input, binding: options.binding, rpc: options.rpc });
+      if (outcome.kind === 'step_up_required') return delegatedBookingHttpStepUp(outcome.stepUp, requestId);
+      const body = v2PrepareBookingResponseSchema.parse({ contractVersion: 2, requestId, data: outcome.data });
+      return stepUpHttpJson(body, 200, PROJECT_S_V2_CONTRACT_MEDIA_TYPE);
+    } catch (error) {
+      return delegatedBookingHttpProblem(error, requestId);
+    }
+  };
+
 export const createDelegatedBookingCommitHandler = (options: ActorBookingHttpOptions) =>
   async (request: Request): Promise<Response> => {
     const requestId = crypto.randomUUID();
     try {
-      const url = new URL(request.url);
-      if (request.method !== 'POST' || url.pathname !== '/api/v2/delegated/bookings') {
-        refuseStepUpHttp('NOT_FOUND');
-      }
-      if (request.url.includes('?') || request.url.includes('#')) refuseStepUpHttp('VALIDATION_ERROR');
-      const mediaType = (request.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase();
-      if (mediaType !== 'application/json' && mediaType !== PROJECT_S_V2_CONTRACT_MEDIA_TYPE) {
-        refuseStepUpHttp('VALIDATION_ERROR');
-      }
-
+      requireBookingPost(request, '/api/v2/delegated/bookings');
       const context = await authenticateBookingActor(request, requestId, options);
-      const input = await readCommitInput(request);
+      const input = await readBookingInput(request, 2);
       // Send the exact input to the existing atomic commit. A status preflight
       // would reject a valid replay after the first commit spent the permission.
       const data = await commitDelegatedBooking({ context, input, binding: options.binding, rpc: options.rpc });
