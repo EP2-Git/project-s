@@ -129,9 +129,17 @@ hold a slot, consume permission or grant access to the human review details.
 Other agents, missing requests and requests that can no longer be used receive
 the same refusal. Account sessions cannot access the agent operation.
 
-The live proof uses the same request for browser approval and agent continuation.
-The agent reads the preparation over HTTP using its own credential and the review
-reference from the original escalation. The listener's private commit and receipt
+The agent starts by posting the mandate ID, host username, meeting type and exact
+start time to `/api/v2/delegated/bookings/prepare` using its own credential. For
+an in-scope request the listener returns a private preparation with `notHeld: true`
+and a summary without booker name or email. For a request that needs approval it
+returns `428 STEP_UP_REQUIRED` with a same-origin review link, reference and deadline.
+The proof resends each request and verifies the original reference and deadline.
+Neither preparation nor escalation spends a booking use or holds the time.
+
+The live proof uses the review link from that escalation for browser approval.
+The agent reads the approved preparation over HTTP using its own credential and
+the original review reference. The listener's private commit and receipt
 handlers verify the actor again on every call. Commit accepts only the approved
 preparation reference and the agent's retry key in a bounded JSON object. The
 database still decides whether permission and availability allow a booking.

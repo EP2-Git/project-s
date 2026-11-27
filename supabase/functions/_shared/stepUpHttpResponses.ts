@@ -1,4 +1,6 @@
-import { v2ProblemEnvelopeSchema, type V2ProblemCode } from './.generated/contracts/dist/v2/index.js';
+import {
+  v2ProblemEnvelopeSchema, type V2Problem, type V2ProblemCode, type V2ProblemStepUp,
+} from './.generated/contracts/dist/v2/index.js';
 import {
   ActorCredentialError,
   type AuthorityBinding, type AuthorityRpc, type PrincipalAuth,
@@ -59,6 +61,25 @@ export const stepUpHttpJson = (body: unknown, status: number, mediaType: string,
   },
 );
 
+const authorityHttpProblemResponse = (
+  requestId: string,
+  { code, status, detail, title, stepUp }: Pick<V2Problem, 'code' | 'status' | 'detail' | 'title' | 'stepUp'>,
+): Response => {
+  const retry = code === 'AUTHORITY_BUSY';
+  const body = v2ProblemEnvelopeSchema.parse({
+    contractVersion: 2,
+    requestId,
+    error: {
+      code, status, requestId, detail,
+      title,
+      type: `https://project-s.local/problems/${code.toLowerCase().replaceAll('_', '-')}`,
+      ...(retry ? { retry: { action: 'retry_after', afterSeconds: 1 } } : {}),
+      ...(stepUp ? { stepUp } : {}),
+    },
+  });
+  return stepUpHttpJson(body, status, 'application/problem+json', retry);
+};
+
 const authorityHttpProblem = (
   error: unknown,
   requestId: string,
@@ -69,23 +90,12 @@ const authorityHttpProblem = (
   // The one alternate validation status is the existing bounded-body refusal.
   const matched = error instanceof ActorCredentialError && Object.hasOwn(allowed, error.code)
     ? allowed[error.code as V2ProblemCode] : undefined;
-  const code = matched && error instanceof ActorCredentialError ? error.code : 'INTERNAL_ERROR';
+  const code = matched && error instanceof ActorCredentialError ? error.code as V2ProblemCode : 'INTERNAL_ERROR';
   const tooLarge = error instanceof ActorCredentialError && code === 'VALIDATION_ERROR' && error.status === 413;
   const { status, detail } = tooLarge
     ? { status: 413, detail: 'The request body is too large.' }
     : matched ?? refusals.INTERNAL_ERROR;
-  const retry = code === 'AUTHORITY_BUSY';
-  const body = v2ProblemEnvelopeSchema.parse({
-    contractVersion: 2,
-    requestId,
-    error: {
-      code, status, requestId, detail,
-      title,
-      type: `https://project-s.local/problems/${code.toLowerCase().replaceAll('_', '-')}`,
-      ...(retry ? { retry: { action: 'retry_after', afterSeconds: 1 } } : {}),
-    },
-  });
-  return stepUpHttpJson(body, status, 'application/problem+json', retry);
+  return authorityHttpProblemResponse(requestId, { code, status, detail, title });
 };
 
 export const stepUpHttpProblem = (error: unknown, requestId: string): Response =>
@@ -93,3 +103,9 @@ export const stepUpHttpProblem = (error: unknown, requestId: string): Response =
 
 export const delegatedBookingHttpProblem = (error: unknown, requestId: string): Response =>
   authorityHttpProblem(error, requestId, bookingRefusals, 'Project S delegated booking request failed');
+
+export const delegatedBookingHttpStepUp = (stepUp: V2ProblemStepUp, requestId: string): Response =>
+  authorityHttpProblemResponse(requestId, {
+    code: 'STEP_UP_REQUIRED', status: 428, detail: 'This booking needs your approval.',
+    title: 'Booking approval required', stepUp,
+  });

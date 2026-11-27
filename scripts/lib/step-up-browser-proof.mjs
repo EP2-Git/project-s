@@ -173,8 +173,8 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
         page.getByText(owner.email, { exact: true }), page.getByText(other.email, { exact: true })],
     });
   };
-  const signIn = async (page, reviewId, account) => {
-    await page.goto(`${base}${reviewPath(reviewId)}`);
+  const signIn = async (page, reviewId, account, reviewUrl = `${base}${reviewPath(reviewId)}`) => {
+    await page.goto(reviewUrl);
     await expect(page.getByRole('heading', { name: 'Sign in to review this request', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(page).toHaveURL(`${base}${loginPath(reviewId)}`);
@@ -333,6 +333,8 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
     }),
     approveLost: (input) => safe(async () => {
       const { reviewId, exactReview } = validate(input);
+      const { reviewUrl } = input;
+      check(reviewUrl === `${base}${reviewPath(reviewId)}`);
       const { context, page } = await createPage(phone);
       const observed = observe(page, reviewId);
       let retried = false;
@@ -354,7 +356,7 @@ export const startStepUpBrowserProof = async ({ origin, owner, other, onStage } 
       };
       await retained(async () => {
         report('lost approval login');
-        await signIn(page, reviewId, owner);
+        await signIn(page, reviewId, owner, reviewUrl);
         report('lost approval pending fields');
         await pending(page, exactReview);
         report('lost approval submit');
